@@ -2,6 +2,8 @@
 
 Two browser apps in plain HTML and JavaScript — no install, no server, no build step. Open the files in Chrome or Edge.
 
+**Use them online:** [Image Tool](https://rehan22980.github.io/image-tool/) · [Course Designer](https://rehan22980.github.io/image-tool/design.html)
+
 ## 🖼️ Image Tool — `index.html`
 
 - **Edit:** rotate, flip, crop (free or fixed ratios), brightness / contrast / saturation and other adjustments, filter presets, text watermark
