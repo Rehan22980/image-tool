@@ -1,0 +1,2644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Course Designer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Noto+Nastaliq+Urdu:wght@400;700&family=Pacifico&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;600;700&family=Roboto+Slab:wght@400;700&display=swap" rel="stylesheet">
+<style id="printStyle"></style>
+<style>
+  :root {
+    --bg: #e9edf5;
+    --panel: #ffffff;
+    --text: #1d2433;
+    --muted: #667085;
+    --accent: #2f6fed;
+    --border: #e3e7ef;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 8px 12px; color: #fff;
+    background: linear-gradient(120deg, #2f6fed, #7b4dff);
+  }
+  .brand { font-weight: 700; font-size: 17px; margin-right: 4px; }
+  .topbar a.nav {
+    color: #fff; text-decoration: none; font-size: 13px;
+    background: rgba(255,255,255,.15); padding: 5px 12px; border-radius: 999px;
+  }
+  .topbar input.title {
+    background: rgba(255,255,255,.15); border: 1px solid transparent; color: #fff;
+    font: inherit; font-weight: 600; padding: 5px 10px; border-radius: 8px; width: 240px;
+  }
+  .topbar input.title:focus { outline: none; border-color: rgba(255,255,255,.6); }
+  .topbar .spacer { flex: 1; }
+  .topbar button, .topbar select {
+    background: rgba(255,255,255,.18); color: #fff; border: 0; border-radius: 8px;
+    padding: 6px 10px; font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .topbar button:hover, .topbar select:hover { background: rgba(255,255,255,.28); }
+  .topbar button:disabled { opacity: .4; cursor: default; }
+  .topbar select option { color: #000; }
+  .topbar .primary { background: #fff; color: var(--accent); font-weight: 700; }
+  .topbar .primary:hover { background: #eef2ff; }
+  #saveState { font-size: 12px; opacity: .85; }
+
+  /* ---------- Layout ---------- */
+  .app { flex: 1; display: grid; grid-template-columns: 72px 250px minmax(0, 1fr) 272px; min-height: 0; }
+  .rail { background: #1d2433; display: flex; flex-direction: column; gap: 4px; padding: 8px 6px; }
+  .rail button {
+    background: none; border: 0; color: #cbd2e1; font: inherit; font-size: 11px; padding: 8px 2px;
+    border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .rail button span { font-size: 20px; }
+  .rail button.active, .rail button:hover { background: #2c3550; color: #fff; }
+
+  .drawer { background: var(--panel); border-right: 1px solid var(--border); overflow: auto; padding: 14px 12px; }
+  .app.ai-open { grid-template-columns: 72px 360px minmax(0, 1fr) 272px; }
+
+  /* ---------- AI assistant ---------- */
+  .drawer.ai { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+  .ai-head { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+  .ai-head b { font-size: 15px; }
+  .ai-head small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  #chatLog { flex: 1; overflow: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .msg { max-width: 88%; padding: 9px 12px; border-radius: 14px; font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: break-word; }
+  .msg.user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+  .msg.assistant { align-self: flex-start; background: #f1f4fa; border-bottom-left-radius: 4px; }
+  .msg.error { background: #fdecea; color: #b42318; }
+  .msg .note { display: block; margin-top: 6px; font-size: 11px; color: var(--accent); font-weight: 600; }
+  .welcome { color: var(--muted); font-size: 13px; line-height: 1.6; background: #f8fafc; border-radius: 12px; padding: 10px 12px; }
+  .typing { align-self: flex-start; color: var(--muted); font-size: 13px; padding: 4px 2px; }
+  .typing span { animation: blink 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay: .2s; }
+  .typing span:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .2; } 40% { opacity: 1; } }
+  .suggest { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 8px; }
+  .suggest button {
+    background: #f3f6ff; border: 1px solid #dbe3fb; color: var(--accent); border-radius: 999px;
+    padding: 5px 10px; font: inherit; font-size: 12px; cursor: pointer; text-align: start;
+  }
+  .suggest button:hover { border-color: var(--accent); }
+  .ai-input { display: flex; gap: 6px; padding: 10px 14px; border-top: 1px solid var(--border); align-items: flex-end; }
+  .ai-input textarea { flex: 1; resize: none; border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; font: inherit; font-size: 13px; }
+  .ai-input button { background: var(--accent); color: #fff; border: 0; border-radius: 10px; padding: 9px 14px; cursor: pointer; font-weight: 600; }
+  .ai-input button:disabled { opacity: .5; cursor: default; }
+  .ai-settings { border-top: 1px solid var(--border); padding: 8px 14px 10px; font-size: 13px; max-height: 45%; overflow: auto; }
+  .ai-settings summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+  .ai-settings .f:first-of-type { margin-top: 8px; }
+  .ai-input .icon { background: #f3f5fa; color: var(--text); padding: 9px 9px; border: 1px solid var(--border); }
+  .ai-input .icon:hover { border-color: var(--accent); }
+  .rec { background: #e11d48 !important; color: #fff !important; border-color: #e11d48 !important; animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(225, 29, 72, .2); } }
+  .voice-row { display: flex; gap: 8px; align-items: center; padding: 0 14px 8px; font-size: 12px; }
+  .voice-row select { font: inherit; font-size: 12px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+  .attach-list { display: flex; gap: 8px; padding: 0 14px; flex-wrap: wrap; }
+  .attach-list:not(:empty) { padding-top: 8px; }
+  .attach-list .a { position: relative; }
+  .attach-list img { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); display: block; }
+  .attach-list button {
+    position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; border: 0;
+    background: #1d2433; color: #fff; font-size: 10px; cursor: pointer; padding: 0;
+  }
+  .msg-imgs { display: flex; gap: 4px; margin-bottom: 6px; flex-wrap: wrap; }
+  .msg-imgs img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; }
+
+  /* ---------- Templates panel ---------- */
+  .theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .theme-card {
+    display: flex; align-items: center; gap: 8px; background: #f8fafc; border: 1px solid var(--border); border-radius: 10px;
+    padding: 6px; cursor: pointer; font: inherit; font-size: 12px; color: var(--text); text-align: left;
+  }
+  .theme-card:hover { border-color: var(--accent); }
+  .theme-card.on { border-color: var(--accent); box-shadow: 0 0 0 2px #dbe5ff; }
+  .theme-card .sw { width: 34px; height: 26px; border-radius: 6px; position: relative; flex: none; }
+  .theme-card .sw i { position: absolute; width: 9px; height: 9px; border-radius: 50%; bottom: 3px; border: 1px solid #fff; }
+  .theme-card .sw i:first-child { right: 3px; }
+  .theme-card .sw i:last-child { right: 14px; }
+  .style-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .style-row button { background: #f3f5fa; border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 12px; cursor: pointer; color: var(--text); }
+  .style-row button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .tpl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 8px; }
+  .tpl-thumb { background: none; border: 0; padding: 0; cursor: pointer; text-align: left; font: inherit; font-size: 11px; color: var(--muted); }
+  .tpl-thumb img {
+    width: 100%; aspect-ratio: 16 / 9; object-fit: contain; border-radius: 6px; border: 1px solid var(--border);
+    background: #eef1f6; display: block; margin-bottom: 3px;
+  }
+  .tpl-thumb:hover img { border-color: var(--accent); box-shadow: 0 0 0 2px #dbe5ff; }
+  .ai-settings input[type=password] { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; font: inherit; font-size: 13px; }
+  .drawer h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 18px 0 8px; }
+  .drawer h3:first-child { margin-top: 0; }
+
+  .workspace { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .canvas-area { flex: 1; overflow: auto; display: flex; padding: 30px; min-height: 0; }
+  #pageHolder { position: relative; flex: none; margin: auto; }
+  #page {
+    position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden;
+    box-shadow: 0 6px 28px rgba(20, 30, 60, .18); background: #fff;
+  }
+
+  .props { background: var(--panel); border-left: 1px solid var(--border); overflow: auto; padding: 14px; }
+
+  /* ---------- Elements on the page ---------- */
+  .el { position: absolute; user-select: none; touch-action: none; cursor: move; }
+  .el:hover { outline: 1px solid rgba(47, 111, 237, .55); }
+  .el.text { white-space: pre-wrap; overflow-wrap: break-word; line-height: 1.25; }
+  .el[contenteditable] { cursor: text; user-select: text; outline: 2px solid rgba(47, 111, 237, .4); }
+  .el img { width: 100%; height: 100%; display: block; pointer-events: none; }
+  .el.tag { display: flex; align-items: center; justify-content: center; border-radius: 999px; white-space: nowrap; font-weight: 600; }
+
+  #selBox { position: absolute; border: 2px solid var(--accent); pointer-events: none; display: none; z-index: 5; }
+  #selBox .h {
+    position: absolute; width: 12px; height: 12px; background: #fff; border: 2px solid var(--accent);
+    border-radius: 50%; pointer-events: auto;
+  }
+  .h[data-dir=nw] { left: -7px; top: -7px; cursor: nwse-resize; }
+  .h[data-dir=n]  { left: calc(50% - 6px); top: -7px; cursor: ns-resize; }
+  .h[data-dir=ne] { right: -7px; top: -7px; cursor: nesw-resize; }
+  .h[data-dir=e]  { right: -7px; top: calc(50% - 6px); cursor: ew-resize; }
+  .h[data-dir=se] { right: -7px; bottom: -7px; cursor: nwse-resize; }
+  .h[data-dir=s]  { left: calc(50% - 6px); bottom: -7px; cursor: ns-resize; }
+  .h[data-dir=sw] { left: -7px; bottom: -7px; cursor: nesw-resize; }
+  .h[data-dir=w]  { left: -7px; top: calc(50% - 6px); cursor: ew-resize; }
+  #selBox.text .h[data-dir=n], #selBox.text .h[data-dir=s] { display: none; }
+  .guide { position: absolute; background: #ec4899; display: none; z-index: 4; pointer-events: none; }
+  #guideV { width: 1px; top: 0; bottom: 0; left: 50%; }
+  #guideH { height: 1px; left: 0; right: 0; top: 50%; }
+
+  /* ---------- Page strip ---------- */
+  .pagebar {
+    display: flex; gap: 12px; padding: 10px 14px; background: #fff; border-top: 1px solid var(--border);
+    overflow-x: auto; flex: none; align-items: flex-start;
+  }
+  .thumb { flex: none; cursor: pointer; font-size: 11px; color: var(--muted); max-width: 160px; }
+  .thumb canvas { display: block; border: 2px solid transparent; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+  .thumb.active canvas { border-color: var(--accent); }
+  .thumb.active { color: var(--accent); font-weight: 600; }
+  .thumb div { margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .add-page {
+    flex: none; width: 96px; height: 80px; border: 2px dashed #b8c3dd; border-radius: 8px;
+    background: none; cursor: pointer; color: var(--muted); font: inherit; font-size: 13px;
+  }
+  .add-page:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ---------- Drawer contents ---------- */
+  .tpl {
+    display: block; width: 100%; text-align: left; background: #f8fafc; border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; font: inherit;
+  }
+  .tpl b { display: block; font-size: 14px; }
+  .tpl small { color: var(--muted); }
+  .tpl:hover { border-color: var(--accent); background: #f3f6ff; }
+  .tpl.pack { background: linear-gradient(120deg, #2f6fed, #7b4dff); color: #fff; border: 0; }
+  .tpl.pack small { color: #e0e7ff; }
+  .add-btn {
+    display: block; width: 100%; text-align: left; background: #f3f5fa; border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 10px; margin-bottom: 6px; cursor: pointer; color: var(--text);
+  }
+  .add-btn:hover { border-color: var(--accent); }
+  .shape-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .shape-grid button {
+    height: 58px; background: #f3f5fa; border: 1px solid var(--border); border-radius: 8px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; color: var(--muted);
+  }
+  .shape-grid button:hover { border-color: var(--accent); }
+  .shape-grid i { display: block; background: var(--accent); }
+  .emoji-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+  .emoji-grid button { font-size: 22px; background: #f3f5fa; border: 1px solid transparent; border-radius: 8px; padding: 5px 0; cursor: pointer; }
+  .emoji-grid button:hover { border-color: var(--accent); }
+  .uploads { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+  .uploads .u { position: relative; cursor: pointer; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); aspect-ratio: 1; background: #f3f5fa; }
+  .uploads img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .uploads .x {
+    position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,.6); color: #fff; border: 0; border-radius: 50%;
+    width: 22px; height: 22px; cursor: pointer; font-size: 12px; padding: 0;
+  }
+  .drop-hint { border: 2px dashed #b8c3dd; border-radius: 10px; padding: 14px; text-align: center; font-size: 13px; color: var(--muted); }
+  .outline-item { padding: 7px 8px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  .outline-item:hover { background: #f3f6ff; }
+  .outline-item.active { background: #e8edff; font-weight: 600; }
+  .mini { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
+  .mini span { font-size: 10px; background: #eef2fa; border-radius: 999px; padding: 1px 6px; color: var(--muted); font-weight: 400; }
+  .stats { font-size: 12px; color: var(--muted); margin-top: 10px; }
+
+  /* ---------- Form controls (drawer + properties) ---------- */
+  .f { display: block; margin-bottom: 10px; font-size: 12px; color: var(--muted); }
+  .f > span { display: block; margin-bottom: 4px; }
+  .f em { font-style: normal; color: var(--text); float: right; }
+  .props input[type=text], .props input[type=number], .props select, .props textarea,
+  .drawer input[type=text], .drawer select, .drawer textarea {
+    width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px;
+    font: inherit; font-size: 13px; background: #fff; color: var(--text);
+  }
+  .props textarea, .drawer textarea { resize: vertical; }
+  .props textarea { margin-bottom: 10px; }
+  .props input[type=range] { width: 100%; }
+  input[type=color] { width: 40px; height: 32px; padding: 2px; border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: pointer; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .four { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .toolrow { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .toolrow button { min-width: 32px; height: 32px; background: #f3f5fa; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+  .toolrow button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .inline { font-size: 12px; color: var(--muted); display: inline-flex; gap: 4px; align-items: center; }
+  .sub { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 14px 0 6px; font-weight: 700; }
+  .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .btn-grid.six { grid-template-columns: repeat(6, 1fr); }
+  .btn-grid button, button.wide {
+    background: #f3f5fa; border: 1px solid var(--border); border-radius: 8px; padding: 7px 4px;
+    cursor: pointer; font: inherit; font-size: 12px; color: var(--text);
+  }
+  button.wide { width: 100%; margin-bottom: 10px; }
+  .btn-grid button:hover, .toolrow button:hover, button.wide:hover { border-color: var(--accent); }
+  .props-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .props-head button { background: #f3f5fa; border: 1px solid var(--border); border-radius: 8px; padding: 5px 9px; cursor: pointer; margin-left: 4px; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .swatches button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #cfd6e4; cursor: pointer; padding: 0; }
+  .tip { font-size: 12px; color: var(--muted); background: #f3f6ff; border-radius: 8px; padding: 8px 10px; margin-top: 14px; line-height: 1.5; }
+
+  .chips-input { display: flex; flex-wrap: wrap; gap: 6px; border: 1px solid var(--border); border-radius: 8px; padding: 6px; background: #fff; }
+  .chips-input .chip {
+    background: #e8edff; color: var(--accent); border-radius: 999px; padding: 3px 6px 3px 10px;
+    font-size: 12px; font-weight: 600; display: inline-flex; gap: 4px; align-items: center;
+  }
+  .chips-input .chip b { cursor: pointer; opacity: .6; }
+  .chips-input .chip b:hover { opacity: 1; }
+  .chips-input input { border: 0; outline: 0; flex: 1; min-width: 90px; font: inherit; font-size: 13px; padding: 3px; }
+
+  /* ---------- Present mode ---------- */
+  #present { position: fixed; inset: 0; background: #000; z-index: 50; display: flex; align-items: center; justify-content: center; }
+  #present img { max-width: 100vw; max-height: 100vh; }
+  #present .bar {
+    position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; align-items: center;
+    color: #fff; background: rgba(0,0,0,.55); padding: 6px 12px; border-radius: 999px; font-size: 13px;
+  }
+  #present .bar button { background: rgba(255,255,255,.15); color: #fff; border: 0; border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+
+  .toast {
+    position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%); background: #1d2433; color: #fff;
+    padding: 10px 18px; border-radius: 999px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 60; font-size: 14px;
+  }
+  .toast.show { opacity: 1; }
+  .hidden { display: none !important; }
+  input[type=file] { display: none; }
+
+  #printArea { display: none; }
+  @media print {
+    html, body { height: auto; overflow: visible; display: block; background: #fff; }
+    body > *:not(#printArea) { display: none !important; }
+    #printArea { display: block; }
+    #printArea img { width: 100%; display: block; break-after: page; }
+    #printArea img:last-child { break-after: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="brand">🎓 Course Designer</span>
+  <a class="nav" href="index.html">🖼️ Image Tool</a>
+  <input class="title" id="titleInput" title="Course title" placeholder="Course title">
+  <span id="saveState"></span>
+  <span class="spacer"></span>
+  <button id="undoBtn" title="Undo (Ctrl+Z)">↶ Undo</button>
+  <button id="redoBtn" title="Redo (Ctrl+Y)">↷ Redo</button>
+  <select id="sizeSelect" title="Page size"></select>
+  <select id="zoomSelect" title="Zoom">
+    <option value="fit">Fit</option>
+    <option value="0.25">25%</option>
+    <option value="0.5">50%</option>
+    <option value="0.75">75%</option>
+    <option value="1">100%</option>
+    <option value="1.5">150%</option>
+  </select>
+  <select id="fileSelect" title="Project">
+    <option value="">📁 Project</option>
+    <option value="new">New project</option>
+    <option value="open">Open project file…</option>
+    <option value="save">Save project file (.json)</option>
+  </select>
+  <select id="exportSelect" title="Download">
+    <option value="">⬇ Download</option>
+    <option value="png">PNG — this page</option>
+    <option value="png2">PNG HD (2×) — this page</option>
+    <option value="jpg">JPG — this page</option>
+    <option value="allpng">PNG — all pages</option>
+    <option value="pdf">PDF — all pages</option>
+  </select>
+  <button class="primary" id="presentBtn">▶ Present</button>
+  <button id="helpBtn" title="Keyboard shortcuts">?</button>
+</div>
+
+<div class="app">
+  <nav class="rail" id="rail">
+    <button data-drawer="ai" class="active"><span>🤖</span>AI</button>
+    <button data-drawer="templates"><span>🧩</span>Templates</button>
+    <button data-drawer="text"><span>🔤</span>Text</button>
+    <button data-drawer="elements"><span>⬛</span>Elements</button>
+    <button data-drawer="uploads"><span>⬆️</span>Uploads</button>
+    <button data-drawer="course"><span>🎓</span>Course</button>
+  </nav>
+
+  <aside class="drawer" id="drawer"></aside>
+
+  <section class="workspace">
+    <div class="canvas-area" id="canvasArea">
+      <div id="pageHolder">
+        <div id="page"></div>
+        <div id="selBox">
+          <div class="h" data-dir="nw"></div><div class="h" data-dir="n"></div><div class="h" data-dir="ne"></div>
+          <div class="h" data-dir="e"></div><div class="h" data-dir="se"></div><div class="h" data-dir="s"></div>
+          <div class="h" data-dir="sw"></div><div class="h" data-dir="w"></div>
+        </div>
+        <div class="guide" id="guideV"></div>
+        <div class="guide" id="guideH"></div>
+      </div>
+    </div>
+    <div class="pagebar" id="pages"></div>
+  </section>
+
+  <aside class="props" id="props"></aside>
+</div>
+
+<div id="present" class="hidden">
+  <img id="slideImg" alt="Slide">
+  <div class="bar">
+    <button id="prevSlide">◀</button>
+    <span id="slideCount"></span>
+    <button id="nextSlide">▶</button>
+    <button id="exitPresent">✕ Exit</button>
+  </div>
+</div>
+
+<div id="printArea"></div>
+<div id="toast" class="toast"></div>
+<input type="file" id="uploadInput" accept="image/*" multiple>
+<input type="file" id="bgInput" accept="image/*">
+<input type="file" id="importInput" accept=".json,application/json">
+<input type="file" id="chatImageInput" accept="image/*" multiple>
+
+<script>
+// ================= Helpers =================
+const $ = (id) => document.getElementById(id);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const uid = () => Math.random().toString(36).slice(2, 10);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const slug = (s) => (s || "course").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "course";
+const toHex = (c) => (/^#[0-9a-f]{6}$/i.test(c || "") ? c : "#ffffff");
+const toBlob = (c, type, q) => new Promise((r) => c.toBlob(r, type, q));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+function downloadBlob(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+// ================= Constants =================
+const STORAGE_KEY = "course-designer-project";
+const ACCENT = "#2f6fed";
+const FONTS = ["Poppins", "Montserrat", "Playfair Display", "Roboto Slab", "Pacifico", "Noto Nastaliq Urdu", "Segoe UI", "Georgia", "Courier New", "Segoe UI Emoji"];
+const RTL = /[֐-ࣿ]/; // Urdu, Arabic, Hebrew…
+const SIZES = [
+  ["Presentation 16:9", 1280, 720],
+  ["Square post", 1080, 1080],
+  ["Story / Reel 9:16", 1080, 1920],
+  ["A4 portrait", 794, 1123],
+  ["A4 landscape / certificate", 1123, 794],
+  ["Facebook / LinkedIn post", 1200, 628],
+];
+const THEMES = [
+  ["#ffffff", null], ["#f8fafc", null], ["#fff7ed", null], ["#ecfdf5", null], ["#fdf2f8", null],
+  ["#1d2433", null], ["#1e3a8a", "#7b4dff"], ["#f97316", "#ec4899"], ["#059669", "#0ea5e9"], ["#111827", "#4b5563"],
+];
+const EMOJIS = ["🎓", "📘", "📚", "✅", "❌", "⭐", "💡", "📌", "🎯", "🔥", "📝", "⏱️", "🏆", "👉", "🚀", "💬", "❓", "⚠️", "📈", "🎉"];
+const TYPE_NAMES = { text: "Text", rect: "Shape", ellipse: "Circle", image: "Image", tag: "Tag" };
+
+// ================= Element factories =================
+const measureCtx = document.createElement("canvas").getContext("2d");
+
+function tagWidth(text, size, family) {
+  measureCtx.font = `600 ${size}px "${family}"`;
+  return Math.round(measureCtx.measureText(text).width + size * 1.6);
+}
+
+function T(text, x, y, w, o = {}) {
+  const fontSize = Math.round(o.fontSize || 32);
+  return {
+    id: uid(), type: "text", text, x, y, w, h: text.split("\n").length * fontSize * 1.25,
+    rotation: 0, opacity: 1, fontFamily: "Poppins", color: "#1d2433", bold: false, italic: false,
+    underline: false, align: "left", fill: "transparent", ...o, fontSize,
+  };
+}
+
+function S(type, x, y, w, h, o = {}) {
+  return { id: uid(), type, x, y, w, h, rotation: 0, opacity: 1, fill: ACCENT, stroke: "#1d2433", strokeWidth: 0, radius: 0, ...o };
+}
+
+function TAG(text, x, y, o = {}) {
+  const fontSize = Math.round(o.fontSize || 20);
+  const fontFamily = o.fontFamily || "Poppins";
+  return {
+    id: uid(), type: "tag", text, x, y, w: tagWidth(text, fontSize, fontFamily), h: Math.round(fontSize * 2),
+    rotation: 0, opacity: 1, fontFamily, fill: "#e8edff", color: ACCENT, ...o, fontSize,
+  };
+}
+
+function tagRow(tags, x, y, o = {}) {
+  const out = [];
+  for (const t of tags) {
+    const el = TAG(t, x, y, o);
+    out.push(el);
+    x += el.w + 12;
+  }
+  return out;
+}
+
+function newPage(name) {
+  return { id: uid(), name, bg: "#ffffff", bgGradient: null, bgImage: null, tags: [], elements: [] };
+}
+
+// Templates are laid out for 1280×720 and scaled to the current page size.
+const sc = () => Math.min(project.w / 1280, project.h / 720);
+
+// Example content for each layout — used by the Templates panel and the course pack.
+const SAMPLES = {
+  cover: () => ({ title: project.title, subtitle: project.description || "A short promise of what your students will be able to do.", tags: project.tags.slice(0, 4) }),
+  contents: () => ({ title: "Course contents" }),
+  section: () => ({ kicker: "Lesson 1", title: "Lesson title goes here", subtitle: "In this lesson you will learn the key idea, see an example and practise it yourself." }),
+  bullets: () => ({ title: "Topic heading", bullets: ["Explain the first idea simply", "Show a real example", "Share a quick tip", "Point out a common mistake"] }),
+  bullets_image: () => ({ title: "Topic with a picture", bullets: ["Explain the idea in one line", "Add a real-life example", "Finish with a tip"] }),
+  two_column: () => ({ title: "Compare two ideas", left: { heading: "Before", bullets: ["Slow and manual", "Easy to make mistakes"] }, right: { heading: "After", bullets: ["Fast and simple", "Clear steps to follow"] } }),
+  keypoints: () => ({ title: "Key points", points: [{ title: "Understand", text: "Learn the core idea in simple words." }, { title: "Practise", text: "Try it with a guided example." }, { title: "Apply", text: "Use it in your own project." }] }),
+  stats: () => ({ title: "By the numbers", stats: [{ value: "12", label: "short video lessons" }, { value: "30 min", label: "practice each week" }, { value: "1", label: "certificate at the end" }] }),
+  quote: () => ({ quote: "The expert in anything was once a beginner.", author: "Helen Hayes" }),
+  quiz: () => ({ name: "Quiz", question: "Which of these is the correct answer?", options: ["Option one", "Option two", "Option three", "Option four"], answer: 0 }),
+  summary: () => ({ title: "Summary", bullets: ["The main idea of this lesson", "The steps you practised", "How to use it in real work"] }),
+  certificate: () => ({ name: "Certificate" }),
+  thanks: () => ({ title: "Thank you!", subtitle: "Questions? hello@yourcourse.com" }),
+};
+const sampleSpec = (layout) => ({ layout, ...SAMPLES[layout]() });
+const COURSE_PACK = ["cover", "contents", "section", "bullets", "bullets_image", "keypoints", "stats", "quiz", "summary", "certificate", "thanks"];
+
+// ================= State =================
+let project;
+let pageIndex = 0;
+let selectedId = null;
+let zoom = 1;
+let zoomMode = "fit";
+let drawerTab = "ai";
+let clipboard = null;
+const undoStack = [];
+const redoStack = [];
+let lastSnap = null;
+
+const curPage = () => project.pages[pageIndex];
+const selectedEl = () => curPage().elements.find((e) => e.id === selectedId) || null;
+const findEl = (id) => curPage().elements.find((e) => e.id === id);
+const nodeOf = (el) => $("page").querySelector(`[data-id="${el.id}"]`);
+
+function defaultProject() {
+  project = {
+    title: "My Course", description: "", category: "", level: "Beginner",
+    tags: ["Design", "Beginner"], w: 1280, h: 720, pages: [], uploads: [],
+  };
+  project.aiTheme = "blue";
+  project.aiStyle = "modern";
+  project.pages.push(buildSlide(sampleSpec("cover")));
+  pageIndex = 0;
+}
+
+function loadSaved() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (saved && Array.isArray(saved.pages) && saved.pages.length) project = saved;
+  } catch (e) { /* storage unavailable or corrupt — start fresh */ }
+  if (!project) defaultProject();
+  project.uploads = project.uploads || [];
+  project.tags = project.tags || [];
+}
+
+// ================= Undo / redo / autosave =================
+const snapshot = () => JSON.stringify({ project, pageIndex });
+
+function commit() {
+  const s = snapshot();
+  if (s === lastSnap) return;
+  if (lastSnap) undoStack.push(lastSnap);
+  if (undoStack.length > 60) undoStack.shift();
+  redoStack.length = 0;
+  lastSnap = s;
+  afterChange();
+}
+
+let commitTimer;
+function scheduleCommit() {
+  clearTimeout(commitTimer);
+  commitTimer = setTimeout(commit, 400);
+}
+
+function undo() {
+  clearTimeout(commitTimer);
+  commit(); // keep any pending change
+  if (!undoStack.length) return;
+  redoStack.push(lastSnap);
+  lastSnap = undoStack.pop();
+  restore(lastSnap);
+}
+
+function redo() {
+  if (!redoStack.length) return;
+  undoStack.push(lastSnap);
+  lastSnap = redoStack.pop();
+  restore(lastSnap);
+}
+
+function restore(s) {
+  const o = JSON.parse(s);
+  // Stay on the current page unless pages were added or removed.
+  if (o.project.pages.length !== project.pages.length) pageIndex = o.pageIndex;
+  project = o.project;
+  pageIndex = clamp(pageIndex, 0, project.pages.length - 1);
+  selectedId = null;
+  renderAll();
+  afterChange();
+}
+
+function afterChange() {
+  $("undoBtn").disabled = !undoStack.length;
+  $("redoBtn").disabled = !redoStack.length;
+  save();
+  refreshThumbs();
+  if (drawerTab === "course" && !$("drawer").contains(document.activeElement)) renderDrawer();
+}
+
+let saveTimer;
+function save() {
+  clearTimeout(saveTimer);
+  $("saveState").textContent = "Saving…";
+  saveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
+      $("saveState").textContent = "✓ Saved in this browser";
+    } catch (e) {
+      $("saveState").textContent = /quota/i.test(e.name)
+        ? "⚠ Too big to autosave — use Project → Save project file"
+        : "⚠ Autosave unavailable here — use Project → Save project file";
+    }
+  }, 400);
+}
+
+// ================= Rendering the page =================
+function bgCss(p) {
+  let s = p.bgGradient ? `linear-gradient(135deg, ${p.bg}, ${p.bgGradient})` : p.bg;
+  if (p.bgImage) s = `url("${p.bgImage}") center / cover no-repeat, ${s}`;
+  return s;
+}
+
+function applyPageBg() {
+  $("page").style.background = bgCss(curPage());
+}
+
+function renderPage() {
+  const pg = $("page");
+  pg.style.width = project.w + "px";
+  pg.style.height = project.h + "px";
+  applyPageBg();
+  pg.replaceChildren();
+  for (const el of curPage().elements) {
+    const n = document.createElement("div");
+    n.dataset.id = el.id;
+    pg.appendChild(n);
+    styleNode(n, el);
+  }
+  applyZoom();
+}
+
+function updateNode(el) {
+  const n = nodeOf(el);
+  if (n) styleNode(n, el);
+}
+
+function styleNode(n, el) {
+  Object.assign(n.style, {
+    left: el.x + "px", top: el.y + "px", width: el.w + "px",
+    height: el.type === "text" ? "auto" : el.h + "px",
+    opacity: el.opacity,
+    transform: el.rotation ? `rotate(${el.rotation}deg)` : "",
+  });
+  switch (el.type) {
+    case "text":
+      n.className = "el text";
+      n.dir = "auto";
+      if (!n.isContentEditable) n.textContent = el.text;
+      Object.assign(n.style, {
+        lineHeight: el.lineHeight || 1.25,
+        fontFamily: `"${el.fontFamily}"`, fontSize: el.fontSize + "px", color: el.color,
+        fontWeight: el.bold ? 700 : 400, fontStyle: el.italic ? "italic" : "normal",
+        textDecoration: el.underline ? "underline" : "none", textAlign: el.align, background: el.fill,
+      });
+      el.h = n.offsetHeight || el.h; // text grows with its content
+      break;
+    case "rect":
+    case "ellipse":
+      n.className = "el";
+      Object.assign(n.style, {
+        background: el.fill, boxSizing: "border-box",
+        border: el.strokeWidth ? `${el.strokeWidth}px solid ${el.stroke}` : "none",
+        borderRadius: el.type === "ellipse" ? "50%" : el.radius + "px",
+      });
+      break;
+    case "image": {
+      n.className = "el";
+      let img = n.querySelector("img");
+      if (!img) { img = document.createElement("img"); img.draggable = false; n.appendChild(img); }
+      if (img.getAttribute("src") !== el.src) img.src = el.src;
+      Object.assign(n.style, { borderRadius: el.radius + "px", overflow: "hidden" });
+      break;
+    }
+    case "tag":
+      n.className = "el tag";
+      n.dir = "auto";
+      if (!n.isContentEditable) n.textContent = el.text;
+      Object.assign(n.style, { background: el.fill, color: el.color, fontFamily: `"${el.fontFamily}"`, fontSize: el.fontSize + "px" });
+      break;
+  }
+}
+
+function fitZoom() {
+  const a = $("canvasArea");
+  return clamp(Math.min((a.clientWidth - 60) / project.w, (a.clientHeight - 60) / project.h), 0.05, 2);
+}
+
+function applyZoom() {
+  zoom = zoomMode === "fit" ? fitZoom() : +zoomMode;
+  $("page").style.transform = `scale(${zoom})`;
+  $("pageHolder").style.width = project.w * zoom + "px";
+  $("pageHolder").style.height = project.h * zoom + "px";
+  updateSelection();
+}
+
+function updateSelection() {
+  const box = $("selBox");
+  const el = selectedEl();
+  if (!el) { box.style.display = "none"; return; }
+  box.className = el.type === "text" ? "text" : "";
+  Object.assign(box.style, {
+    display: "block",
+    left: el.x * zoom - 1 + "px", top: el.y * zoom - 1 + "px",
+    width: el.w * zoom + 2 + "px", height: el.h * zoom + 2 + "px",
+    transform: el.rotation ? `rotate(${el.rotation}deg)` : "",
+  });
+}
+
+function select(id) {
+  selectedId = id;
+  updateSelection();
+  renderProps();
+}
+
+function renderAll() {
+  $("titleInput").value = project.title;
+  buildSizeSelect();
+  renderPage();
+  renderProps();
+  renderDrawer();
+  refreshThumbs();
+}
+
+// ================= Drawing a page to a canvas (export, thumbnails, present) =================
+const imgCache = {};
+const getImg = (src) => (imgCache[src] = imgCache[src] || loadImage(src));
+
+function roundRectPath(x, X, Y, W, H, R) {
+  R = Math.max(0, Math.min(R, W / 2, H / 2));
+  x.beginPath();
+  x.moveTo(X + R, Y);
+  x.arcTo(X + W, Y, X + W, Y + H, R);
+  x.arcTo(X + W, Y + H, X, Y + H, R);
+  x.arcTo(X, Y + H, X, Y, R);
+  x.arcTo(X, Y, X + W, Y, R);
+  x.closePath();
+}
+
+function wrapLines(x, text, maxW) {
+  const out = [];
+  for (const para of text.split("\n")) {
+    let line = "";
+    for (const word of para.split(" ")) {
+      const test = line ? line + " " + word : word;
+      if (line && x.measureText(test).width > maxW) { out.push(line); line = word; } else line = test;
+    }
+    out.push(line);
+  }
+  return out;
+}
+
+async function drawEl(x, el) {
+  const { w, h } = el;
+  switch (el.type) {
+    case "rect":
+    case "ellipse": {
+      const sw = el.strokeWidth || 0;
+      const path = (inset) => {
+        if (el.type === "ellipse") {
+          x.beginPath();
+          x.ellipse(w / 2, h / 2, Math.max(0, w / 2 - inset), Math.max(0, h / 2 - inset), 0, 0, Math.PI * 2);
+        } else roundRectPath(x, inset, inset, w - 2 * inset, h - 2 * inset, el.radius - inset);
+      };
+      if (el.fill !== "transparent") { path(0); x.fillStyle = el.fill; x.fill(); }
+      if (sw) { path(sw / 2); x.lineWidth = sw; x.strokeStyle = el.stroke; x.stroke(); }
+      break;
+    }
+    case "image": {
+      const img = await getImg(el.src);
+      roundRectPath(x, 0, 0, w, h, el.radius);
+      x.clip();
+      x.drawImage(img, 0, 0, w, h);
+      break;
+    }
+    case "text": {
+      if (el.fill !== "transparent") { x.fillStyle = el.fill; x.fillRect(0, 0, w, h); }
+      x.font = `${el.italic ? "italic " : ""}${el.bold ? 700 : 400} ${el.fontSize}px "${el.fontFamily}"`;
+      x.fillStyle = el.color;
+      x.textBaseline = "middle";
+      x.textAlign = el.align;
+      const rtl = RTL.test(el.text);
+      x.direction = rtl ? "rtl" : "ltr";
+      const lh = el.fontSize * (el.lineHeight || 1.25);
+      const ax = el.align === "center" ? w / 2 : el.align === "right" ? w : 0;
+      wrapLines(x, el.text, w).forEach((line, i) => {
+        const y = i * lh + lh / 2;
+        // A right-to-left mark keeps leading bullets/numbers on the right, like the editor shows them.
+        x.fillText(rtl ? "‏" + line : line, ax, y);
+        if (el.underline) {
+          const tw = x.measureText(line).width;
+          const sx = el.align === "center" ? ax - tw / 2 : el.align === "right" ? ax - tw : ax;
+          x.fillRect(sx, y + el.fontSize * 0.42, tw, Math.max(1, el.fontSize / 16));
+        }
+      });
+      break;
+    }
+    case "tag":
+      roundRectPath(x, 0, 0, w, h, h / 2);
+      x.fillStyle = el.fill;
+      x.fill();
+      x.font = `600 ${el.fontSize}px "${el.fontFamily}"`;
+      x.fillStyle = el.color;
+      x.textAlign = "center";
+      x.textBaseline = "middle";
+      x.direction = RTL.test(el.text) ? "rtl" : "ltr";
+      x.fillText(el.text, w / 2, h / 2);
+      break;
+  }
+}
+
+async function renderToCanvas(page, scale = 1) {
+  await document.fonts.ready;
+  const W = project.w, H = project.h;
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(W * scale));
+  c.height = Math.max(1, Math.round(H * scale));
+  const x = c.getContext("2d");
+  x.scale(scale, scale);
+
+  if (page.bgGradient) {
+    // Same geometry as CSS linear-gradient(135deg, …).
+    const a = (135 * Math.PI) / 180, dx = Math.sin(a), dy = -Math.cos(a);
+    const len = Math.abs(W * dx) + Math.abs(H * dy);
+    const g = x.createLinearGradient(W / 2 - (dx * len) / 2, H / 2 - (dy * len) / 2, W / 2 + (dx * len) / 2, H / 2 + (dy * len) / 2);
+    g.addColorStop(0, page.bg);
+    g.addColorStop(1, page.bgGradient);
+    x.fillStyle = g;
+  } else x.fillStyle = page.bg;
+  x.fillRect(0, 0, W, H);
+
+  if (page.bgImage) {
+    const img = await getImg(page.bgImage);
+    const s = Math.max(W / img.width, H / img.height);
+    x.drawImage(img, (W - img.width * s) / 2, (H - img.height * s) / 2, img.width * s, img.height * s);
+  }
+
+  for (const el of page.elements) {
+    x.save();
+    x.globalAlpha = el.opacity;
+    x.translate(el.x + el.w / 2, el.y + el.h / 2);
+    if (el.rotation) x.rotate((el.rotation * Math.PI) / 180);
+    x.translate(-el.w / 2, -el.h / 2);
+    await drawEl(x, el);
+    x.restore();
+  }
+  return c;
+}
+
+// ================= Page strip =================
+let thumbTimer;
+function refreshThumbs() {
+  clearTimeout(thumbTimer);
+  thumbTimer = setTimeout(drawThumbs, 250);
+}
+
+async function drawThumbs() {
+  const scale = Math.min(150 / project.w, 90 / project.h);
+  const items = [];
+  for (const [i, p] of project.pages.entries()) {
+    const d = document.createElement("div");
+    d.className = "thumb" + (i === pageIndex ? " active" : "");
+    d.title = p.name;
+    d.appendChild(await renderToCanvas(p, scale));
+    const label = document.createElement("div");
+    label.textContent = `${i + 1}. ${p.name}`;
+    d.appendChild(label);
+    d.addEventListener("click", () => goPage(i));
+    items.push(d);
+  }
+  const add = document.createElement("button");
+  add.className = "add-page";
+  add.textContent = "+ Add page";
+  add.addEventListener("click", () => addPage(newPage(`Page ${project.pages.length + 1}`)));
+  $("pages").replaceChildren(...items, add);
+}
+
+function goPage(i) {
+  if (i === pageIndex) return;
+  pageIndex = clamp(i, 0, project.pages.length - 1);
+  selectedId = null;
+  renderAll();
+}
+
+function addPage(page) {
+  project.pages.splice(pageIndex + 1, 0, page);
+  pageIndex++;
+  selectedId = null;
+  renderAll();
+  commit();
+}
+
+// ================= Mouse: select, move, resize =================
+let drag = null;
+
+$("page").addEventListener("pointerdown", (e) => {
+  const node = e.target.closest(".el");
+  if (document.activeElement?.isContentEditable && document.activeElement !== node) document.activeElement.blur();
+  if (node?.isContentEditable) return;
+  if (!node) { select(null); return; }
+  const el = findEl(node.dataset.id);
+  if (!el) return;
+  if (selectedId !== el.id) select(el.id);
+  startDrag(e, el, "move");
+});
+
+$("canvasArea").addEventListener("pointerdown", (e) => {
+  if (e.target === $("canvasArea") || e.target === $("pageHolder")) {
+    document.activeElement?.isContentEditable && document.activeElement.blur();
+    select(null);
+  }
+});
+
+$("selBox").addEventListener("pointerdown", (e) => {
+  const h = e.target.closest(".h");
+  if (!h || !selectedEl()) return;
+  e.stopPropagation();
+  startDrag(e, selectedEl(), h.dataset.dir);
+});
+
+function startDrag(e, el, mode) {
+  e.preventDefault();
+  drag = { mode, el, sx: e.clientX, sy: e.clientY, start: { x: el.x, y: el.y, w: el.w, h: el.h, fontSize: el.fontSize }, moved: false };
+  window.addEventListener("pointermove", onDrag);
+  window.addEventListener("pointerup", endDrag, { once: true });
+}
+
+function onDrag(e) {
+  const d = drag, el = d.el, s = d.start;
+  const dx = (e.clientX - d.sx) / zoom, dy = (e.clientY - d.sy) / zoom;
+  if (!d.moved && Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) < 3) return;
+  d.moved = true;
+
+  if (d.mode === "move") {
+    let x = s.x + dx, y = s.y + dy;
+    const snap = 6 / zoom;
+    const onV = Math.abs(x + el.w / 2 - project.w / 2) < snap;
+    const onH = Math.abs(y + el.h / 2 - project.h / 2) < snap;
+    if (onV) x = project.w / 2 - el.w / 2;
+    if (onH) y = project.h / 2 - el.h / 2;
+    el.x = Math.round(x);
+    el.y = Math.round(y);
+    showGuides(onV, onH);
+  } else {
+    const dir = d.mode;
+    let { x, y, w, h } = s;
+    if (dir.includes("e")) w = s.w + dx;
+    if (dir.includes("w")) w = s.w - dx;
+    if (dir.includes("s")) h = s.h + dy;
+    if (dir.includes("n")) h = s.h - dy;
+    w = Math.max(10, w);
+    h = Math.max(10, h);
+    const corner = dir.length === 2;
+    // Images and tags keep their shape when dragged by a corner (hold Shift for any element).
+    if (corner && (el.type === "image" || el.type === "tag" || e.shiftKey)) {
+      const r = s.w / s.h;
+      if (w / h > r) h = w / r; else w = h * r;
+    }
+    if (dir.includes("w")) x = s.x + s.w - w;
+    if (dir.includes("n")) y = s.y + s.h - h;
+    if ((el.type === "text" || el.type === "tag") && corner) el.fontSize = Math.max(6, Math.round((s.fontSize * w) / s.w));
+    Object.assign(el, { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) });
+  }
+  updateNode(el);
+  updateSelection();
+}
+
+function endDrag() {
+  window.removeEventListener("pointermove", onDrag);
+  showGuides(false, false);
+  if (drag?.moved) { commit(); renderProps(); }
+  drag = null;
+}
+
+function showGuides(v, h) {
+  $("guideV").style.display = v ? "block" : "none";
+  $("guideH").style.display = h ? "block" : "none";
+}
+
+// Double-click text or a tag to type in it.
+$("page").addEventListener("dblclick", (e) => {
+  const node = e.target.closest(".el");
+  const el = node && findEl(node.dataset.id);
+  if (el && (el.type === "text" || el.type === "tag")) editText(node, el);
+});
+
+function editText(node, el) {
+  node.contentEditable = "plaintext-only";
+  node.focus();
+  document.getSelection().selectAllChildren(node);
+  node.oninput = () => {
+    el.h = node.offsetHeight;
+    updateSelection();
+  };
+  node.onblur = () => {
+    node.removeAttribute("contenteditable");
+    node.oninput = node.onblur = null;
+    el.text = node.innerText.replace(/\n$/, "");
+    if (el.type === "tag") { el.w = tagWidth(el.text, el.fontSize, el.fontFamily); el.h = Math.round(el.fontSize * 2); }
+    updateNode(el);
+    updateSelection();
+    commit();
+    renderProps();
+  };
+}
+
+// ================= Adding things =================
+function place(el) {
+  const shift = (curPage().elements.length % 5) * 16;
+  el.x = Math.round((project.w - el.w) / 2 + shift);
+  el.y = Math.round((project.h - el.h) / 2 + shift);
+  curPage().elements.push(el);
+  renderPage();
+  select(el.id);
+  commit();
+}
+
+function addElement(kind) {
+  const W = project.w, s = sc();
+  const make = {
+    heading: () => T("Add a heading", 0, 0, W * 0.7, { fontSize: 56 * s, bold: true, fontFamily: "Montserrat" }),
+    subheading: () => T("Add a subheading", 0, 0, W * 0.6, { fontSize: 34 * s, bold: true, color: "#475467" }),
+    body: () => T("Add a little bit of body text. Double-click to edit.", 0, 0, W * 0.5, { fontSize: 22 * s, color: "#344054" }),
+    bullets: () => T("• First point\n• Second point\n• Third point", 0, 0, W * 0.45, { fontSize: 24 * s }),
+    numbered: () => T("1. First step\n2. Second step\n3. Third step", 0, 0, W * 0.45, { fontSize: 24 * s }),
+    quote: () => T("“A great quote goes here.”\n— Author", 0, 0, W * 0.6, { fontSize: 32 * s, italic: true, fontFamily: "Playfair Display", align: "center" }),
+    rect: () => S("rect", 0, 0, W * 0.2, W * 0.12),
+    rounded: () => S("rect", 0, 0, W * 0.2, W * 0.12, { radius: 24 * s }),
+    circle: () => S("ellipse", 0, 0, W * 0.14, W * 0.14, { fill: "#7b4dff" }),
+    outline: () => S("rect", 0, 0, W * 0.2, W * 0.12, { fill: "transparent", strokeWidth: 4, stroke: ACCENT, radius: 12 * s }),
+    line: () => S("rect", 0, 0, W * 0.3, Math.max(3, Math.round(4 * s)), { fill: "#1d2433" }),
+    tag: () => TAG("New tag", 0, 0, { fontSize: 20 * s }),
+    button: () => TAG("Enroll now", 0, 0, { fontSize: 24 * s, fill: ACCENT, color: "#ffffff" }),
+  };
+  place(make[kind]());
+}
+
+function addEmoji(emoji) {
+  const size = Math.round(90 * sc());
+  place(T(emoji, 0, 0, size * 1.4, { fontSize: size, align: "center", fontFamily: "Segoe UI Emoji" }));
+}
+
+function addFontPair(headFont, bodyFont) {
+  const W = project.w, H = project.h, s = sc();
+  const head = T("Your heading here", W * 0.15, H * 0.32, W * 0.7, { fontSize: 54 * s, bold: true, fontFamily: headFont, align: "center" });
+  const body = T("And a supporting line of text underneath it.", W * 0.2, H * 0.32 + head.h + 16 * s, W * 0.6, { fontSize: 24 * s, fontFamily: bodyFont, align: "center", color: "#475467" });
+  curPage().elements.push(head, body);
+  renderPage();
+  select(head.id);
+  commit();
+}
+
+// Shrink big photos so the project stays small enough to autosave.
+async function readImageFile(file) {
+  const url = URL.createObjectURL(file);
+  const img = await loadImage(url);
+  URL.revokeObjectURL(url);
+  const m = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement("canvas");
+  c.width = Math.round(img.naturalWidth * m);
+  c.height = Math.round(img.naturalHeight * m);
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+  const keepAlpha = /png|webp|gif|svg/.test(file.type);
+  return { src: c.toDataURL(keepAlpha ? "image/png" : "image/jpeg", 0.86), w: c.width, h: c.height };
+}
+
+function addImage(u) {
+  const s = Math.min((project.w * 0.5) / u.w, (project.h * 0.6) / u.h, 1);
+  place({ id: uid(), type: "image", src: u.src, x: 0, y: 0, w: Math.round(u.w * s), h: Math.round(u.h * s), rotation: 0, opacity: 1, radius: 0 });
+}
+
+async function uploadFiles(files, addToPage) {
+  const images = files.filter((f) => f.type.startsWith("image/"));
+  if (!images.length) return;
+  for (const f of images) {
+    const u = await readImageFile(f);
+    project.uploads.push(u);
+    if (addToPage) addImage(u);
+  }
+  if (drawerTab === "uploads") renderDrawer();
+  commit();
+}
+
+$("uploadInput").addEventListener("change", (e) => { uploadFiles([...e.target.files], true); e.target.value = ""; });
+$("bgInput").addEventListener("change", async (e) => {
+  const f = e.target.files[0];
+  e.target.value = "";
+  if (!f) return;
+  curPage().bgImage = (await readImageFile(f)).src;
+  applyPageBg();
+  renderProps();
+  commit();
+});
+$("canvasArea").addEventListener("dragover", (e) => e.preventDefault());
+$("canvasArea").addEventListener("drop", (e) => { e.preventDefault(); uploadFiles([...e.dataTransfer.files], true); });
+document.addEventListener("paste", (e) => {
+  if (document.activeElement?.isContentEditable || /INPUT|TEXTAREA/.test(document.activeElement?.tagName)) return;
+  const file = [...e.clipboardData.items].find((i) => i.type.startsWith("image/"))?.getAsFile();
+  if (file) uploadFiles([file], true);
+});
+
+// ================= Actions =================
+function alignEl(el, where) {
+  const W = project.w, H = project.h;
+  if (where === "left") el.x = 0;
+  if (where === "hcenter") el.x = Math.round((W - el.w) / 2);
+  if (where === "right") el.x = W - el.w;
+  if (where === "top") el.y = 0;
+  if (where === "vcenter") el.y = Math.round((H - el.h) / 2);
+  if (where === "bottom") el.y = H - el.h;
+}
+
+function doAction(a) {
+  const p = curPage();
+  const el = selectedEl();
+  const i = el ? p.elements.indexOf(el) : -1;
+  const els = p.elements;
+
+  switch (a) {
+    case "duplicate": {
+      if (!el) return;
+      const c = { ...JSON.parse(JSON.stringify(el)), id: uid(), x: el.x + 20, y: el.y + 20 };
+      els.splice(i + 1, 0, c);
+      renderPage();
+      select(c.id);
+      break;
+    }
+    case "delete":
+      if (!el) return;
+      els.splice(i, 1);
+      renderPage();
+      select(null);
+      break;
+    case "front": els.splice(i, 1); els.push(el); renderPage(); break;
+    case "back": els.splice(i, 1); els.unshift(el); renderPage(); break;
+    case "forward": if (i < els.length - 1) [els[i], els[i + 1]] = [els[i + 1], els[i]]; renderPage(); break;
+    case "backward": if (i > 0) [els[i], els[i - 1]] = [els[i - 1], els[i]]; renderPage(); break;
+    case "setBg":
+      p.bgImage = el.src;
+      els.splice(i, 1);
+      renderPage();
+      select(null);
+      break;
+    case "dupPage": {
+      const c = JSON.parse(JSON.stringify(p));
+      c.id = uid();
+      c.name = p.name + " (copy)";
+      c.elements.forEach((e) => (e.id = uid()));
+      addPage(c);
+      return;
+    }
+    case "delPage":
+      if (project.pages.length === 1) { toast("A course needs at least one page"); return; }
+      if (!confirm(`Delete the page "${p.name}"?`)) return;
+      project.pages.splice(pageIndex, 1);
+      pageIndex = Math.min(pageIndex, project.pages.length - 1);
+      selectedId = null;
+      renderAll();
+      break;
+    case "pageLeft":
+    case "pageRight": {
+      const j = pageIndex + (a === "pageLeft" ? -1 : 1);
+      if (j < 0 || j >= project.pages.length) return;
+      [project.pages[pageIndex], project.pages[j]] = [project.pages[j], project.pages[pageIndex]];
+      pageIndex = j;
+      renderAll();
+      break;
+    }
+    case "bgImage": $("bgInput").click(); return;
+    case "aiImage": fillImages([p.id]); return;
+    case "clearBg": p.bgImage = null; applyPageBg(); renderProps(); break;
+    case "upload": $("uploadInput").click(); return;
+    case "insertTags": {
+      if (!project.tags.length) { toast("Add some course tags first"); return; }
+      const row = tagRow(project.tags, 0, 0, { fontSize: 20 * sc() });
+      const total = row.reduce((sum, t) => sum + t.w + 12, -12);
+      let x = Math.max(0, (project.w - total) / 2);
+      for (const t of row) { t.x = Math.round(x); t.y = Math.round(project.h * 0.86); x += t.w + 12; }
+      els.push(...row);
+      renderPage();
+      select(row[0].id);
+      break;
+    }
+    case "coursePack": {
+      const pages = COURSE_PACK.map((layout, i) => buildSlide(sampleSpec(layout), project.aiTheme, project.aiStyle, i));
+      project.pages.splice(pageIndex + 1, 0, ...pages);
+      pageIndex += 1;
+      selectedId = null;
+      fillContents();
+      renderAll();
+      toast(`Added ${COURSE_PACK.length} pages — edit any of them`);
+      break;
+    }
+    case "shuffle": {
+      project.pages[pageIndex] = rebuildPage(p, (p.variant || 0) + 1);
+      fillContents();
+      selectedId = null;
+      renderAll();
+      break;
+    }
+    default:
+      return;
+  }
+  commit();
+}
+
+// ================= Keyboard =================
+document.addEventListener("keydown", (e) => {
+  if (!$("present").classList.contains("hidden")) {
+    if (["ArrowRight", "PageDown", " "].includes(e.key)) { e.preventDefault(); stepSlide(1); }
+    if (["ArrowLeft", "PageUp"].includes(e.key)) { e.preventDefault(); stepSlide(-1); }
+    if (e.key === "Escape") stopPresent();
+    return;
+  }
+  const ae = document.activeElement;
+  const typing = ae && (ae.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(ae.tagName));
+  const mod = e.ctrlKey || e.metaKey;
+  const k = e.key.toLowerCase();
+  if (typing) {
+    if (e.key === "Escape" && ae.isContentEditable) ae.blur();
+    return;
+  }
+  if (mod && k === "z") { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if (mod && k === "y") { e.preventDefault(); redo(); return; }
+  if (mod && k === "v" && clipboard) {
+    e.preventDefault();
+    const c = JSON.parse(clipboard);
+    c.id = uid();
+    c.x += 20;
+    c.y += 20;
+    clipboard = JSON.stringify(c);
+    curPage().elements.push(c);
+    renderPage();
+    select(c.id);
+    commit();
+    return;
+  }
+  const el = selectedEl();
+  if (!el) return;
+  if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); doAction("delete"); }
+  else if (mod && k === "d") { e.preventDefault(); doAction("duplicate"); }
+  else if (mod && k === "c") { clipboard = JSON.stringify(el); toast("Copied — press Ctrl+V to paste"); }
+  else if (e.key.startsWith("Arrow")) {
+    e.preventDefault();
+    const step = e.shiftKey ? 10 : 1;
+    if (e.key === "ArrowLeft") el.x -= step;
+    if (e.key === "ArrowRight") el.x += step;
+    if (e.key === "ArrowUp") el.y -= step;
+    if (e.key === "ArrowDown") el.y += step;
+    updateNode(el);
+    updateSelection();
+    scheduleCommit();
+  } else if (e.key === "Escape") select(null);
+  else if (e.key === "Enter" && (el.type === "text" || el.type === "tag")) { e.preventDefault(); editText(nodeOf(el), el); }
+});
+
+// ================= Properties panel (right) =================
+const field = (label, input) => `<label class="f"><span>${label}</span>${input}</label>`;
+
+function renderProps() {
+  const P = $("props");
+  const el = selectedEl();
+  if (!el) { renderPageProps(); return; }
+  const isText = el.type === "text" || el.type === "tag";
+  let h = `<div class="props-head"><b>${TYPE_NAMES[el.type]}</b><span>
+    <button data-action="duplicate" title="Duplicate (Ctrl+D)">⧉</button><button data-action="delete" title="Delete (Del)">🗑</button></span></div>`;
+
+  if (isText) {
+    h += `<textarea data-prop="text" rows="3" dir="auto">${esc(el.text)}</textarea>
+      <button class="wide" data-dictate="1">🎤 Type by voice</button>`;
+    h += `<div class="two">${field("Font", `<select data-prop="fontFamily">${FONTS.map((f) => `<option ${f === el.fontFamily ? "selected" : ""}>${f}</option>`).join("")}</select>`)}
+      ${field("Size", `<input type="number" min="6" max="400" data-prop="fontSize" value="${el.fontSize}">`)}</div>`;
+    h += `<div class="toolrow"><input type="color" data-prop="color" value="${toHex(el.color)}" title="Text colour">`;
+    if (el.type === "text") {
+      h += `<button data-toggle="bold" class="${el.bold ? "on" : ""}" title="Bold"><b>B</b></button>
+        <button data-toggle="italic" class="${el.italic ? "on" : ""}" title="Italic"><i>I</i></button>
+        <button data-toggle="underline" class="${el.underline ? "on" : ""}" title="Underline"><u>U</u></button>
+        ${[["left", "⫷"], ["center", "≡"], ["right", "⫸"]].map(([a, icon]) =>
+          `<button data-set="align" data-value="${a}" class="${el.align === a ? "on" : ""}" title="Align ${a}">${icon}</button>`).join("")}`;
+    }
+    h += `</div>`;
+  }
+  if (el.type !== "image") {
+    const none = el.fill === "transparent";
+    h += field(el.type === "text" ? "Highlight behind text" : "Fill colour", `<div class="toolrow" style="margin:0">
+      <input type="color" data-prop="fill" value="${toHex(el.fill)}">
+      ${el.type !== "tag" ? `<label class="inline"><input type="checkbox" data-prop="fillNone" ${none ? "checked" : ""}> None</label>` : ""}</div>`);
+  }
+  if (el.type === "rect" || el.type === "ellipse") {
+    h += `<div class="two">${field("Border colour", `<input type="color" data-prop="stroke" value="${toHex(el.stroke)}">`)}
+      ${field("Border width", `<input type="number" min="0" max="100" data-prop="strokeWidth" value="${el.strokeWidth}">`)}</div>`;
+  }
+  if (el.type === "rect" || el.type === "image") {
+    h += field(`Rounded corners <em>${el.radius}</em>`, `<input type="range" min="0" max="${Math.round(Math.min(el.w, el.h) / 2)}" data-prop="radius" value="${el.radius}">`);
+  }
+  if (el.type === "image") h += `<button class="wide" data-action="setBg">Use as page background</button>`;
+
+  h += `<div class="sub">Position &amp; size</div><div class="four">${["x", "y", "w", "h"].map((k) =>
+    field(k.toUpperCase(), `<input type="number" data-prop="${k}" value="${Math.round(el[k])}" ${k === "h" && isText ? "disabled" : ""}>`)).join("")}</div>`;
+  h += field(`Rotation <em>${el.rotation}°</em>`, `<input type="range" min="-180" max="180" data-prop="rotation" value="${el.rotation}">`);
+  h += field(`Opacity <em>${Math.round(el.opacity * 100)}%</em>`, `<input type="range" min="5" max="100" data-prop="opacity" data-scale="100" value="${Math.round(el.opacity * 100)}">`);
+  h += `<div class="sub">Layer</div><div class="btn-grid">
+    <button data-action="front">⤒ To front</button><button data-action="back">⤓ To back</button>
+    <button data-action="forward">↑ Forward</button><button data-action="backward">↓ Backward</button></div>`;
+  h += `<div class="sub">Align on page</div><div class="btn-grid six">
+    ${[["left", "⇤"], ["hcenter", "↔"], ["right", "⇥"], ["top", "⤒"], ["vcenter", "↕"], ["bottom", "⤓"]]
+      .map(([a, icon]) => `<button data-align="${a}" title="${a}">${icon}</button>`).join("")}</div>`;
+  P.innerHTML = h;
+}
+
+function renderPageProps() {
+  const p = curPage();
+  $("props").innerHTML = `<div class="props-head"><b>Page ${pageIndex + 1} of ${project.pages.length}</b></div>
+    ${field("Page / lesson name", `<input type="text" data-page-prop="name" value="${esc(p.name)}">`)}
+    <div class="two">
+      ${field("Background", `<input type="color" data-page-prop="bg" value="${toHex(p.bg)}">`)}
+      ${field("Gradient", `<div class="toolrow" style="margin:0"><input type="color" data-page-prop="bgGradient" value="${toHex(p.bgGradient || p.bg)}">
+        <label class="inline"><input type="checkbox" data-page-prop="gradOn" ${p.bgGradient ? "checked" : ""}> On</label></div>`)}
+    </div>
+    <div class="swatches">${THEMES.map(([a, b], i) =>
+      `<button data-theme="${i}" style="background:${b ? `linear-gradient(135deg,${a},${b})` : a}" title="Background"></button>`).join("")}</div>
+    ${p.spec && VARIANTS[p.layout]?.length > 1 ? `<button class="wide" data-action="shuffle">🔀 Shuffle design (${VARIANTS[p.layout].length} layouts)</button>` : ""}
+    ${p.pendingImage ? `<button class="wide" data-action="aiImage">🖼️ Create picture with AI</button>` : ""}
+    ${field("Background image", `<div class="toolrow" style="margin:0"><button class="wide" style="margin:0;flex:1" data-action="bgImage">Choose image…</button>
+      ${p.bgImage ? `<button class="wide" style="margin:0;flex:1" data-action="clearBg">Remove</button>` : ""}</div>`)}
+    <label class="f"><span>Page tags</span></label><div class="chips-input" id="pageTags"></div>
+    <div style="height:10px"></div>
+    ${field("Speaker notes", `<textarea data-page-prop="notes" rows="3" dir="auto" placeholder="Notes for when you present">${esc(p.notes || "")}</textarea>`)}
+    <div class="sub">Page</div>
+    <div class="btn-grid">
+      <button data-action="dupPage">⧉ Duplicate</button><button data-action="delPage">🗑 Delete</button>
+      <button data-action="pageLeft">← Move earlier</button><button data-action="pageRight">Move later →</button>
+    </div>
+    <p class="tip">Click anything on the page to edit it. Double-click text to type.
+      Drag images from your computer straight onto the page.</p>`;
+  chipInput($("pageTags"), p.tags, commit);
+}
+
+$("props").addEventListener("input", (e) => {
+  const t = e.target;
+  const pageProp = t.dataset.pageProp;
+  if (pageProp) {
+    const p = curPage();
+    if (pageProp === "gradOn") p.bgGradient = t.checked ? $("props").querySelector('[data-page-prop="bgGradient"]').value : null;
+    else if (pageProp === "bgGradient") {
+      p.bgGradient = t.value;
+      $("props").querySelector('[data-page-prop="gradOn"]').checked = true;
+    } else p[pageProp] = t.value;
+    applyPageBg();
+    scheduleCommit();
+    return;
+  }
+
+  const prop = t.dataset.prop;
+  const el = selectedEl();
+  if (!prop || !el) return;
+  let v = t.type === "checkbox" ? t.checked : t.type === "number" || t.type === "range" ? +t.value / (+t.dataset.scale || 1) : t.value;
+  if (t.type === "number" && (t.value === "" || isNaN(v))) return;
+
+  if (prop === "fillNone") el.fill = v ? "transparent" : $("props").querySelector('[data-prop="fill"]').value;
+  else {
+    el[prop] = v;
+    const noneBox = $("props").querySelector('[data-prop="fillNone"]');
+    if (prop === "fill" && noneBox) noneBox.checked = false;
+  }
+  if (el.type === "tag" && ["text", "fontSize", "fontFamily"].includes(prop)) {
+    el.w = tagWidth(el.text, el.fontSize, el.fontFamily);
+    el.h = Math.round(el.fontSize * 2);
+  }
+  const em = t.closest("label")?.querySelector("em");
+  if (em) em.textContent = prop === "rotation" ? v + "°" : prop === "opacity" ? t.value + "%" : t.value;
+  updateNode(el);
+  updateSelection();
+  scheduleCommit();
+});
+
+$("props").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  if (b.dataset.dictate) { toggleMic($("props").querySelector('[data-prop="text"]'), b); return; }
+  if (b.dataset.action) { doAction(b.dataset.action); return; }
+  if (b.dataset.theme) {
+    const [bg, grad] = THEMES[+b.dataset.theme];
+    Object.assign(curPage(), { bg, bgGradient: grad });
+    applyPageBg();
+    renderProps();
+    commit();
+    return;
+  }
+  const el = selectedEl();
+  if (!el) return;
+  if (b.dataset.toggle) el[b.dataset.toggle] = !el[b.dataset.toggle];
+  else if (b.dataset.set) el[b.dataset.set] = b.dataset.value;
+  else if (b.dataset.align) alignEl(el, b.dataset.align);
+  else return;
+  updateNode(el);
+  updateSelection();
+  renderProps();
+  commit();
+});
+
+// A tag box: type and press Enter (or comma) to add, click × to remove.
+function chipInput(container, list, onChange) {
+  const input = document.createElement("input");
+  input.placeholder = "Type a tag + Enter";
+  const render = () => {
+    container.querySelectorAll(".chip").forEach((c) => c.remove());
+    list.forEach((tag, i) => {
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.innerHTML = `${esc(tag)} <b title="Remove">×</b>`;
+      chip.querySelector("b").addEventListener("click", () => { list.splice(i, 1); render(); onChange(); });
+      container.insertBefore(chip, input);
+    });
+  };
+  input.addEventListener("keydown", (e) => {
+    if ((e.key === "Enter" || e.key === ",") && input.value.trim()) {
+      e.preventDefault();
+      for (const t of input.value.split(",").map((s) => s.trim()).filter(Boolean)) if (!list.includes(t)) list.push(t);
+      input.value = "";
+      render();
+      onChange();
+    } else if (e.key === "Backspace" && !input.value && list.length) {
+      list.pop();
+      render();
+      onChange();
+    }
+  });
+  container.replaceChildren(input);
+  container.addEventListener("click", () => input.focus());
+  render();
+}
+
+// ================= Drawer (left) =================
+const DRAWERS = {
+  ai: () => {
+    const s = ai.settings, prov = AI_PROVIDERS[s.provider] || AI_PROVIDERS.custom;
+    return `
+    <div class="ai-head"><b>🤖 AI Assistant</b>
+      <small>Ask for a whole presentation, new slides or improvements. Everything it makes stays fully editable by hand.</small></div>
+    <div id="chatLog"></div>
+    <div class="suggest" id="suggest">${AI_SUGGESTIONS.map((t) => `<button data-suggest="${esc(t)}" dir="auto">${esc(t)}</button>`).join("")}</div>
+    <div class="attach-list" id="attachList"></div>
+    <div class="ai-input">
+      <button class="icon" data-attach="1" title="Attach a picture">📎</button>
+      <button class="icon" data-mic="1" title="Speak (voice typing)">🎤</button>
+      <textarea id="chatInput" rows="2" dir="auto" placeholder="Type or speak… e.g. Make a 10-slide course on Excel basics"></textarea>
+      <button id="chatSend" data-send="1">Send</button>
+    </div>
+    <div class="voice-row">
+      <span>🎤</span>
+      <select data-ai="voiceLang" title="Language you speak">${VOICE_LANGS.map(([code, n]) =>
+        `<option value="${code}" ${code === s.voiceLang ? "selected" : ""}>${n}</option>`).join("")}</select>
+      <label class="inline"><input type="checkbox" data-ai="autoSend" ${s.autoSend ? "checked" : ""}> Send after speaking</label>
+    </div>
+    <details class="ai-settings"><summary>⚙️ AI settings — ${esc(prov.label)}</summary>
+      <label class="f"><span>AI service</span><select data-ai="provider">${Object.entries(AI_PROVIDERS).map(([k, p]) =>
+        `<option value="${k}" ${k === s.provider ? "selected" : ""}>${p.label}</option>`).join("")}</select></label>
+      <label class="f"><span>API URL</span><input type="text" data-ai="url" value="${esc(s.url)}"></label>
+      <label class="f"><span>Model</span><input type="text" data-ai="model" value="${esc(s.model)}"></label>
+      <label class="f"><span>API key ${prov.keyUrl ? `— <a href="${prov.keyUrl}" target="_blank" rel="noopener">get a free key</a>` : "(not needed)"}</span>
+        <input type="password" data-ai="key" value="${esc(s.key)}" placeholder="${prov.keyUrl ? "Paste your key" : "Leave empty"}"></label>
+      <label class="inline"><input type="checkbox" data-ai="images" ${s.images ? "checked" : ""}> Create pictures for slides (free, Pollinations)</label>
+      <p class="tip">Your key is stored only in this browser.
+        ${prov.vision ? "This service can read the pictures you attach." : "To let the AI read attached pictures, choose Google Gemini or Groq (free keys). Pictures are still placed in your slides either way."}
+        ${s.provider === "ollama" ? " Start Ollama with OLLAMA_ORIGINS=* so this page can reach it." : ""}</p>
+    </details>`;
+  },
+
+  templates: () => `
+    <h3>Theme</h3>
+    <div class="theme-grid">${Object.entries(AI_THEMES).map(([k, t]) => `
+      <button class="theme-card ${k === (project.aiTheme || "blue") ? "on" : ""}" data-theme-key="${k}" title="${t.name} — ${t.mood}">
+        <span class="sw" style="background:linear-gradient(135deg,${t.cover},${t.cover2})"><i style="background:${t.accent}"></i><i style="background:${t.soft}"></i></span>
+        <b style="font-family:'${t.head}'">${t.name}</b></button>`).join("")}</div>
+    <h3>Style</h3>
+    <div class="style-row">${Object.entries(AI_STYLES).map(([k, n]) =>
+      `<button class="${k === (project.aiStyle || "modern") ? "on" : ""}" data-style-key="${k}">${n}</button>`).join("")}</div>
+    <p class="tip">Theme and style redesign every designed slide at once. Your own changes on those slides are redone — press Undo to go back.</p>
+    <h3>Whole course</h3>
+    <button class="tpl pack" data-action="coursePack"><b>✨ Complete course pack</b><small>Adds ${COURSE_PACK.length} designed pages: cover, contents, lesson, content, picture, key points, numbers, quiz, summary, certificate and thank-you</small></button>
+    <h3>Add a slide</h3>
+    <div class="tpl-grid">${Object.entries(VARIANTS).flatMap(([layout, names]) => names.map((n, v) =>
+      `<button class="tpl-thumb" data-layout="${layout}" data-variant="${v}"><img data-preview="${layout}:${v}" alt="">
+        <span>${LAYOUT_NAMES[layout]}${names.length > 1 ? " · " + n : ""}</span></button>`)).join("")}</div>
+    <button class="tpl" data-template="blank" style="margin-top:10px"><b>Blank page</b><small>Start from scratch</small></button>`,
+
+  text: () => `
+    <h3>Add text</h3>
+    <button class="add-btn" data-add="heading" style="font:700 22px Montserrat">Add a heading</button>
+    <button class="add-btn" data-add="subheading" style="font:700 17px Poppins;color:#475467">Add a subheading</button>
+    <button class="add-btn" data-add="body" style="font:400 14px Poppins">Add body text</button>
+    <button class="add-btn" data-add="bullets" style="font:400 14px Poppins">• Bullet list</button>
+    <button class="add-btn" data-add="numbered" style="font:400 14px Poppins">1. Numbered list</button>
+    <button class="add-btn" data-add="quote" style="font:italic 400 17px 'Playfair Display'">“Quote”</button>
+    <h3>Font pairs</h3>
+    ${[["Montserrat", "Poppins"], ["Playfair Display", "Poppins"], ["Roboto Slab", "Montserrat"], ["Pacifico", "Poppins"]].map(([a, b]) =>
+      `<button class="add-btn" data-pair="${a}|${b}"><span style="font:700 18px '${a}'">${a}</span><br><span style="font:400 13px '${b}';color:#667085">with ${b}</span></button>`).join("")}`,
+
+  elements: () => `
+    <h3>Shapes</h3>
+    <div class="shape-grid">
+      <button data-add="rect"><i style="width:34px;height:22px"></i>Rectangle</button>
+      <button data-add="rounded"><i style="width:34px;height:22px;border-radius:7px"></i>Rounded</button>
+      <button data-add="circle"><i style="width:26px;height:26px;border-radius:50%;background:#7b4dff"></i>Circle</button>
+      <button data-add="outline"><i style="width:34px;height:22px;background:none;border:3px solid ${ACCENT};border-radius:5px"></i>Outline</button>
+      <button data-add="line"><i style="width:36px;height:3px;background:#1d2433"></i>Line</button>
+      <button data-add="tag"><i style="width:40px;height:16px;border-radius:9px;background:#e8edff"></i>Tag</button>
+      <button data-add="button"><i style="width:40px;height:16px;border-radius:9px"></i>Button</button>
+    </div>
+    <h3>Icons &amp; emoji</h3>
+    <div class="emoji-grid">${EMOJIS.map((e) => `<button data-emoji="${e}">${e}</button>`).join("")}</div>`,
+
+  uploads: () => `
+    <h3>Your images</h3>
+    <button class="wide" data-action="upload">⬆ Upload images</button>
+    <div class="drop-hint">…or drag images onto the page, or paste with Ctrl+V</div>
+    <div class="uploads">${project.uploads.map((u, i) =>
+      `<div class="u" data-upload="${i}" title="Add to page"><img src="${u.src}" alt=""><button class="x" data-remove="${i}" title="Remove">✕</button></div>`).join("")}</div>`,
+
+  course: () => {
+    const count = project.pages.reduce((n, p) => n + p.elements.length, 0);
+    return `
+    <h3>Course details</h3>
+    <label class="f"><span>Description</span><textarea data-course="description" rows="3" placeholder="What will students learn?">${esc(project.description)}</textarea></label>
+    <div class="two">
+      <label class="f"><span>Category</span><input type="text" data-course="category" list="cats" value="${esc(project.category)}" placeholder="e.g. Design"></label>
+      <label class="f"><span>Level</span><select data-course="level">${["Beginner", "Intermediate", "Advanced", "All levels"]
+        .map((l) => `<option ${l === project.level ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+    </div>
+    <datalist id="cats">${["Design", "Programming", "Business", "Marketing", "Language", "Photography", "Music", "Health", "Personal development"]
+      .map((c) => `<option value="${c}">`).join("")}</datalist>
+    <label class="f"><span>Course tags</span></label>
+    <div class="chips-input" id="courseTags"></div>
+    <button class="wide" data-action="insertTags" style="margin-top:8px">🏷️ Put course tags on this page</button>
+    <h3>Outline</h3>
+    ${project.pages.map((p, i) => `<div class="outline-item ${i === pageIndex ? "active" : ""}" data-goto="${i}">${i + 1}. ${esc(p.name)}
+      ${p.tags.length ? `<div class="mini">${p.tags.map((t) => `<span>${esc(t)}</span>`).join("")}</div>` : ""}</div>`).join("")}
+    <div class="stats">${project.pages.length} pages · ${count} elements</div>`;
+  },
+};
+
+function renderDrawer() {
+  const isAI = drawerTab === "ai";
+  const app = document.querySelector(".app");
+  const widthChanged = app.classList.contains("ai-open") !== isAI;
+  const draft = $("chatInput")?.value;
+  $("drawer").classList.toggle("ai", isAI);
+  app.classList.toggle("ai-open", isAI);
+  $("drawer").innerHTML = DRAWERS[drawerTab]();
+  document.querySelectorAll("#rail button").forEach((b) => b.classList.toggle("active", b.dataset.drawer === drawerTab));
+  if (drawerTab === "course") chipInput($("courseTags"), project.tags, commit);
+  if (isAI) {
+    if (draft) $("chatInput").value = draft;
+    $("chatInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat($("chatInput").value); }
+    });
+    $("chatInput").addEventListener("paste", (e) => {
+      const file = [...e.clipboardData.items].find((i) => i.type.startsWith("image/"))?.getAsFile();
+      if (file) { e.preventDefault(); attachImages([file]); }
+    });
+    renderChat();
+    renderAttachments();
+  }
+  if (drawerTab === "templates") drawPreviews();
+  if (widthChanged) applyZoom();
+}
+
+// Small pictures of each layout in the current theme/style for the Templates panel (cached).
+const previewCache = {};
+async function drawPreviews() {
+  const look = `${project.aiTheme}|${project.aiStyle}|${project.w}x${project.h}|${project.title}`;
+  for (const img of $("drawer").querySelectorAll("img[data-preview]")) {
+    const key = look + "|" + img.dataset.preview;
+    if (!previewCache[key]) {
+      const [layout, v] = img.dataset.preview.split(":");
+      const page = buildSlide(sampleSpec(layout), project.aiTheme, project.aiStyle, +v);
+      previewCache[key] = (await renderToCanvas(page, 220 / project.w)).toDataURL("image/jpeg", 0.85);
+    }
+    if (img.isConnected) img.src = previewCache[key];
+  }
+}
+
+$("chatImageInput").addEventListener("change", (e) => { attachImages([...e.target.files]); e.target.value = ""; });
+
+$("rail").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  drawerTab = b.dataset.drawer;
+  renderDrawer();
+});
+
+$("drawer").addEventListener("click", (e) => {
+  const t = e.target.closest("[data-template],[data-add],[data-pair],[data-emoji],[data-remove],[data-upload],[data-goto],[data-action],[data-suggest],[data-send],[data-layout],[data-theme-key],[data-style-key],[data-mic],[data-attach],[data-unattach]");
+  if (!t) return;
+  const d = t.dataset;
+  if (d.suggest) sendChat(d.suggest);
+  else if (d.send) sendChat($("chatInput").value);
+  else if (d.template) addPage(newPage("Blank page"));
+  else if (d.layout) addPage(buildSlide(sampleSpec(d.layout), project.aiTheme, project.aiStyle, +d.variant));
+  else if (d.themeKey || d.styleKey) {
+    if (d.themeKey) project.aiTheme = d.themeKey;
+    if (d.styleKey) project.aiStyle = d.styleKey;
+    const n = restyleAll();
+    selectedId = null;
+    renderAll();
+    commit();
+    toast(n ? `Redesigned ${n} slide(s)` : "Saved — new designed slides will use this look");
+  }
+  else if (d.mic) toggleMic($("chatInput"), t, () => { if (ai.settings.autoSend && $("chatInput")?.value.trim()) sendChat($("chatInput").value); });
+  else if (d.attach) $("chatImageInput").click();
+  else if (d.unattach) { ai.pending = ai.pending.filter((id) => id !== d.unattach); renderAttachments(); }
+  else if (d.add) addElement(d.add);
+  else if (d.pair) addFontPair(...d.pair.split("|"));
+  else if (d.emoji) addEmoji(d.emoji);
+  else if (d.remove) { e.stopPropagation(); project.uploads.splice(+d.remove, 1); renderDrawer(); commit(); }
+  else if (d.upload) addImage(project.uploads[+d.upload]);
+  else if (d.goto) goPage(+d.goto);
+  else if (d.action) doAction(d.action);
+});
+
+$("drawer").addEventListener("input", (e) => {
+  const setting = e.target.dataset.ai;
+  if (setting === "provider") {
+    const p = AI_PROVIDERS[e.target.value];
+    Object.assign(ai.settings, { provider: e.target.value, url: p.url, model: p.model });
+    saveAISettings();
+    renderDrawer();
+    $("drawer").querySelector("details").open = true;
+    return;
+  }
+  if (setting) {
+    ai.settings[setting] = e.target.type === "checkbox" ? e.target.checked : e.target.value.trim();
+    saveAISettings();
+    return;
+  }
+  const key = e.target.dataset.course;
+  if (!key) return;
+  project[key] = e.target.value;
+  scheduleCommit();
+});
+
+// ================= Top bar =================
+$("titleInput").addEventListener("input", (e) => { project.title = e.target.value; scheduleCommit(); });
+$("undoBtn").addEventListener("click", undo);
+$("redoBtn").addEventListener("click", redo);
+$("zoomSelect").addEventListener("change", (e) => { zoomMode = e.target.value; applyZoom(); });
+window.addEventListener("resize", () => { if (zoomMode === "fit") applyZoom(); });
+
+function buildSizeSelect() {
+  const value = `${project.w}x${project.h}`;
+  const opts = SIZES.map(([n, w, h]) => `<option value="${w}x${h}">${n} (${w}×${h})</option>`);
+  if (!SIZES.some(([, w, h]) => `${w}x${h}` === value)) opts.unshift(`<option value="${value}">Custom (${project.w}×${project.h})</option>`);
+  $("sizeSelect").innerHTML = opts.join("");
+  $("sizeSelect").value = value;
+}
+
+$("sizeSelect").addEventListener("change", (e) => {
+  [project.w, project.h] = e.target.value.split("x").map(Number);
+  renderAll();
+  commit();
+});
+
+$("helpBtn").addEventListener("click", () => alert(
+  "Keyboard shortcuts\n\n" +
+  "Double-click / Enter — edit text\n" +
+  "Delete — delete element\n" +
+  "Ctrl+D — duplicate\n" +
+  "Ctrl+C / Ctrl+V — copy / paste element\n" +
+  "Arrow keys — nudge (Shift = 10px)\n" +
+  "Shift + drag corner — keep proportions\n" +
+  "Ctrl+Z / Ctrl+Y — undo / redo\n" +
+  "Esc — deselect\n\n" +
+  "Present mode: ← → to move, Esc to exit"
+));
+
+$("fileSelect").addEventListener("change", (e) => {
+  const v = e.target.value;
+  e.target.value = "";
+  if (v === "new") {
+    if (!confirm("Start a new project? Save the current one first if you need it (Project → Save project file).")) return;
+    defaultProject();
+    selectedId = null;
+    renderAll();
+    commit();
+  } else if (v === "open") $("importInput").click();
+  else if (v === "save") {
+    downloadBlob(new Blob([JSON.stringify(project)], { type: "application/json" }), `${slug(project.title)}.course.json`);
+  }
+});
+
+$("importInput").addEventListener("change", async (e) => {
+  const f = e.target.files[0];
+  e.target.value = "";
+  if (!f) return;
+  try {
+    const p = JSON.parse(await f.text());
+    if (!Array.isArray(p.pages) || !p.pages.length) throw new Error("no pages");
+    project = { uploads: [], tags: [], ...p };
+    pageIndex = 0;
+    selectedId = null;
+    renderAll();
+    commit();
+    toast("Project opened");
+  } catch (err) {
+    toast("That file isn't a Course Designer project");
+  }
+});
+
+$("exportSelect").addEventListener("change", async (e) => {
+  const v = e.target.value;
+  e.target.value = "";
+  const name = slug(project.title);
+  if (v === "png" || v === "png2" || v === "jpg") {
+    const c = await renderToCanvas(curPage(), v === "png2" ? 2 : 1);
+    const type = v === "jpg" ? "image/jpeg" : "image/png";
+    downloadBlob(await toBlob(c, type, 0.92), `${name}-page-${pageIndex + 1}.${v === "jpg" ? "jpg" : "png"}`);
+  } else if (v === "allpng") {
+    toast("Downloading all pages…");
+    for (const [i, p] of project.pages.entries()) {
+      downloadBlob(await toBlob(await renderToCanvas(p, 1), "image/png"), `${name}-page-${i + 1}.png`);
+      await sleep(350); // browsers block downloads fired too quickly
+    }
+  } else if (v === "pdf") {
+    exportPdf();
+  }
+});
+
+// The browser's print dialog has "Save as PDF"; each page becomes one PDF page.
+async function exportPdf() {
+  toast("Preparing pages… choose “Save as PDF” in the print window");
+  const imgs = [];
+  for (const p of project.pages) {
+    const img = new Image();
+    img.src = (await renderToCanvas(p, 2)).toDataURL("image/jpeg", 0.92);
+    imgs.push(img);
+  }
+  await Promise.all(imgs.map((i) => i.decode()));
+  $("printArea").replaceChildren(...imgs);
+  $("printStyle").textContent = `@page { size: ${project.w}px ${project.h}px; margin: 0; }`;
+  window.print();
+}
+
+// ================= Present mode =================
+const show = { i: 0, slides: [] };
+
+$("presentBtn").addEventListener("click", async () => {
+  toast("Preparing slides…");
+  const scale = Math.min(2, Math.max(1, screen.width / project.w));
+  show.slides = [];
+  for (const p of project.pages) show.slides.push((await renderToCanvas(p, scale)).toDataURL("image/jpeg", 0.92));
+  show.i = pageIndex;
+  $("present").classList.remove("hidden");
+  showSlide();
+  try { await $("present").requestFullscreen(); } catch (e) { /* full screen not allowed — the overlay still works */ }
+});
+
+function showSlide() {
+  $("slideImg").src = show.slides[show.i];
+  $("slideCount").textContent = `${show.i + 1} / ${show.slides.length}`;
+}
+
+function stepSlide(d) {
+  show.i = clamp(show.i + d, 0, show.slides.length - 1);
+  showSlide();
+}
+
+function stopPresent() {
+  $("present").classList.add("hidden");
+  if (document.fullscreenElement) document.exitFullscreen();
+}
+
+$("slideImg").addEventListener("click", () => stepSlide(1));
+$("prevSlide").addEventListener("click", () => stepSlide(-1));
+$("nextSlide").addEventListener("click", () => stepSlide(1));
+$("exitPresent").addEventListener("click", stopPresent);
+document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement) $("present").classList.add("hidden"); });
+
+// ================= AI assistant =================
+// The AI never draws pixels itself: it answers with slide specs (layout + text), and the
+// layout builders below turn those into pages using this app's own elements, themes and styles.
+const AI_KEY = "course-designer-ai";
+const AI_PROVIDERS = {
+  pollinations: { label: "Pollinations — free, no key", url: "https://text.pollinations.ai/openai", model: "openai" },
+  gemini: { label: "Google Gemini — free key (reads images)", url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", model: "gemini-2.5-flash", keyUrl: "https://aistudio.google.com/apikey", vision: true },
+  groq: { label: "Groq — free key (reads images)", url: "https://api.groq.com/openai/v1/chat/completions", model: "llama-3.3-70b-versatile", visionModel: "meta-llama/llama-4-scout-17b-16e-instruct", keyUrl: "https://console.groq.com/keys", vision: true },
+  openrouter: { label: "OpenRouter — free models", url: "https://openrouter.ai/api/v1/chat/completions", model: "meta-llama/llama-3.3-70b-instruct:free", keyUrl: "https://openrouter.ai/keys" },
+  ollama: { label: "Ollama — runs on your computer", url: "http://localhost:11434/v1/chat/completions", model: "llama3.2" },
+  custom: { label: "Custom (OpenAI-compatible)", url: "", model: "", vision: true },
+};
+const AI_SUGGESTIONS = [
+  "Make an 8-slide presentation on Digital Marketing for beginners",
+  "اردو میں فوٹوگرافی کی بنیادی باتوں پر ایک کورس پریزنٹیشن بنائیں",
+  "Improve the current slide",
+  "Give the whole presentation a darker, bolder look",
+  "Add a 3-question quiz about this course",
+];
+const VOICE_LANGS = [["ur-PK", "اردو"], ["hi-IN", "हिंदी"], ["en-US", "English"], ["ar-SA", "العربية"]];
+
+const AI_THEMES = {
+  blue: { name: "Ocean", mood: "calm, professional", bg: "#ffffff", soft: "#eef2ff", accent: "#2f6fed", onAccent: "#ffffff", cover: "#1e3a8a", cover2: "#7b4dff", text: "#1d2433", muted: "#475467", onCover: "#ffffff", head: "Montserrat", body: "Poppins" },
+  sunset: { name: "Sunset", mood: "warm, energetic", bg: "#fffaf5", soft: "#ffedd5", accent: "#ea580c", onAccent: "#ffffff", cover: "#f97316", cover2: "#db2777", text: "#1f2937", muted: "#57534e", onCover: "#ffffff", head: "Poppins", body: "Poppins" },
+  forest: { name: "Forest", mood: "natural, fresh", bg: "#f7fdf9", soft: "#d1fae5", accent: "#059669", onAccent: "#ffffff", cover: "#065f46", cover2: "#0e7490", text: "#052e1c", muted: "#3f5f52", onCover: "#ffffff", head: "Montserrat", body: "Poppins" },
+  dark: { name: "Midnight", mood: "dark, modern, techy", bg: "#0f172a", soft: "#1e293b", accent: "#a78bfa", onAccent: "#0f172a", cover: "#312e81", cover2: "#0f172a", text: "#f8fafc", muted: "#cbd5e1", onCover: "#ffffff", head: "Montserrat", body: "Poppins" },
+  elegant: { name: "Elegant", mood: "classic, premium", bg: "#fffdf8", soft: "#f5ecd7", accent: "#b45309", onAccent: "#ffffff", cover: "#1f2937", cover2: "#78350f", text: "#1f2937", muted: "#57534e", onCover: "#fef3c7", head: "Playfair Display", body: "Poppins" },
+  mono: { name: "Minimal", mood: "black and white, serious", bg: "#ffffff", soft: "#f4f4f5", accent: "#18181b", onAccent: "#ffffff", cover: "#18181b", cover2: "#52525b", text: "#18181b", muted: "#52525b", onCover: "#ffffff", head: "Montserrat", body: "Poppins" },
+  rose: { name: "Rose", mood: "soft, friendly, creative", bg: "#fff7f9", soft: "#ffe4ec", accent: "#e11d48", onAccent: "#ffffff", cover: "#be123c", cover2: "#f472b6", text: "#3f0d1d", muted: "#6b4553", onCover: "#ffffff", head: "Playfair Display", body: "Poppins" },
+  royal: { name: "Royal", mood: "rich, luxurious", bg: "#faf8ff", soft: "#ede9fe", accent: "#7c3aed", onAccent: "#ffffff", cover: "#2e1065", cover2: "#a16207", text: "#1e1b4b", muted: "#4c4870", onCover: "#fde68a", head: "Playfair Display", body: "Poppins" },
+  mint: { name: "Mint", mood: "light, health, science", bg: "#f0fdfa", soft: "#ccfbf1", accent: "#0d9488", onAccent: "#ffffff", cover: "#134e4a", cover2: "#0891b2", text: "#042f2e", muted: "#3b625e", onCover: "#ffffff", head: "Poppins", body: "Poppins" },
+  notebook: { name: "Notebook", mood: "school, handmade, cosy", bg: "#fbf8f1", soft: "#efe7d6", accent: "#c2410c", onAccent: "#ffffff", cover: "#292524", cover2: "#57534e", text: "#292524", muted: "#57534e", onCover: "#fbf8f1", head: "Roboto Slab", body: "Roboto Slab" },
+};
+const AI_STYLES = { modern: "Modern", bold: "Bold", minimal: "Minimal", playful: "Playful", split: "Split" };
+// Layout variations; slides cycle through them so a deck doesn't look repetitive.
+const VARIANTS = {
+  cover: ["Cover"], section: ["Lesson title"], bullets: ["List", "Cards", "Numbered"], bullets_image: ["Picture right", "Picture left"],
+  two_column: ["Cards", "Divided"], keypoints: ["Cards", "Rows"], stats: ["Cards", "Big numbers"], quote: ["Quote"], quiz: ["Quiz"],
+  summary: ["Checklist", "Cards"], contents: ["Contents"], certificate: ["Certificate"], thanks: ["Thank you"],
+};
+const LAYOUT_NAMES = {
+  cover: "Cover", section: "Lesson title", bullets: "Bullets", bullets_image: "Text + picture", two_column: "Two columns", keypoints: "Key points",
+  stats: "Numbers", quote: "Quote", quiz: "Quiz", summary: "Summary", contents: "Contents", certificate: "Certificate", thanks: "Thank you",
+};
+
+const AI_SYSTEM_PROMPT = `You are the AI design assistant inside "Course Designer", a slide and online-course builder (similar to Gamma).
+You create and edit course presentations by returning slide specs; the app turns them into designed pages with its own layouts, themes and styles.
+
+ALWAYS answer with ONE JSON object and nothing else (no markdown, no code fences):
+{
+  "reply": "short friendly message to the user, in the same language the user wrote in",
+  "action": "none" | "new_presentation" | "add_slides" | "replace_current" | "update_course" | "restyle",
+  "theme": "${Object.keys(AI_THEMES).join('" | "')}",
+  "style": "${Object.keys(AI_STYLES).join('" | "')}",
+  "course": { "title": "", "description": "", "tags": [""], "level": "Beginner|Intermediate|Advanced|All levels", "category": "" },
+  "slides": [ slide, ... ]
+}
+- "theme" and "style": for new_presentation (pick what suits the topic and audience) and for restyle (when the user wants a different look, colours or mood).
+  Themes: ${Object.entries(AI_THEMES).map(([k, t]) => `${k} (${t.mood})`).join(", ")}.
+  Styles: modern (clean, accent line under titles), bold (coloured title bands, big centred cover), minimal (white space, thin lines), playful (soft colours, round shapes), split (coloured side panel beside the content).
+- "course": for new_presentation and update_course.
+- "slides": for new_presentation, add_slides, and replace_current (exactly one slide).
+
+Every slide: { "layout": "...", "name": "short page name", "notes": "1-3 sentence speaker notes", "tags": ["optional page tags"], ...fields }
+Layouts and their fields:
+- "cover": title, subtitle, tags (2-4 short words), image_prompt (optional English picture description, shown in the split style)
+- "section": kicker (e.g. "Lesson 1"), title, subtitle
+- "bullets": title, bullets (3-6)
+- "bullets_image": title, bullets (3-5), and either image_prompt (an English description of a fitting picture) or image_ref
+- "two_column": title, left {heading, bullets}, right {heading, bullets}
+- "keypoints": title, points (exactly 3 objects {title, text})
+- "stats": title, stats (3 objects {value, label}), e.g. {"value": "85%", "label": "..."}
+- "quote": quote, author
+- "quiz": question, options (4 strings), answer (index 0-3 of the correct option)
+- "summary": title, bullets (3-5)
+- "contents": title (the app fills in the list of pages)
+- "certificate": no fields
+- "thanks": title, subtitle
+
+Rules:
+- Short, slide-friendly text: titles under 8 words, bullets under 12 words.
+- Write slide text in the language the user asks for; otherwise in the language of their message. Urdu must be in Urdu script.
+- A full presentation has 6-12 slides: start with "cover", usually add "contents", end with "summary" and/or "thanks". Mix layouts so it does not feel repetitive; use "bullets_image" for 1-3 slides.
+- "replace_current" rewrites or improves the slide marked CURRENT below. "add_slides" adds new slides after it.
+- "restyle" only changes theme and/or style of the whole deck; send no slides.
+- USER IMAGES (listed below as img1, img2…) are pictures the user attached. Put one on a "cover" or "bullets_image" slide with "image_ref": "img1". If you can see an image, use what is in it.
+- If the user only asks a question or chats, use action "none" and answer in "reply".
+- Be accurate and educational. Do not invent statistics; if unsure, describe rather than quote numbers.`;
+
+const ai = { messages: [], busy: false, status: "", settings: loadAISettings(), images: {}, pending: [], imageCount: 0 };
+
+function loadAISettings() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(AI_KEY)); } catch (e) { /* storage unavailable */ }
+  const p = AI_PROVIDERS.pollinations;
+  return { provider: "pollinations", url: p.url, model: p.model, key: "", images: true, voiceLang: "ur-PK", autoSend: false, ...(saved || {}) };
+}
+
+function saveAISettings() {
+  try { localStorage.setItem(AI_KEY, JSON.stringify(ai.settings)); } catch (e) { /* storage unavailable */ }
+}
+
+// ---------- Chat panel ----------
+function renderChat() {
+  const log = $("chatLog");
+  if (!log) return;
+  let h = ai.messages.length ? "" : `<div class="welcome" dir="auto">👋 Hi! Tell me which course or presentation you want.
+I'll plan the slides, write the content and design them with this app's themes and layouts — then you can edit anything by hand.
+
+🎤 Speak instead of typing, or 📎 attach a picture.
+اردو، हिंदी یا English — جس زبان میں چاہیں لکھیں یا بولیں۔</div>`;
+  h += ai.messages.map((m) => `<div class="msg ${m.role}${m.error ? " error" : ""}" dir="auto">${
+    m.images?.length ? `<div class="msg-imgs">${m.images.map((id) => `<img src="${ai.images[id]?.src || ""}" alt="">`).join("")}</div>` : ""
+  }${esc(m.content)}${m.note ? `<span class="note">✓ ${esc(m.note)}</span>` : ""}</div>`).join("");
+  if (ai.busy) h += `<div class="typing">${esc(ai.status || "AI is working")}<span>.</span><span>.</span><span>.</span></div>`;
+  log.innerHTML = h;
+  log.scrollTop = log.scrollHeight;
+  $("chatSend").disabled = ai.busy;
+  $("suggest").classList.toggle("hidden", ai.messages.length > 0);
+}
+
+function renderAttachments() {
+  const box = $("attachList");
+  if (!box) return;
+  box.innerHTML = ai.pending.map((id) =>
+    `<span class="a"><img src="${ai.images[id].src}" alt="" title="${esc(ai.images[id].name)}"><button data-unattach="${id}" title="Remove">✕</button></span>`).join("");
+}
+
+async function attachImages(files) {
+  for (const f of files.filter((f) => f.type.startsWith("image/"))) {
+    const u = await readImageFile(f);
+    // A smaller copy is what gets sent to the AI, so requests stay fast.
+    const img = await loadImage(u.src);
+    const m = Math.min(1, 1024 / Math.max(u.w, u.h));
+    const c = document.createElement("canvas");
+    c.width = Math.round(u.w * m);
+    c.height = Math.round(u.h * m);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    const id = "img" + ++ai.imageCount;
+    ai.images[id] = { ...u, name: f.name || id, visionSrc: c.toDataURL("image/jpeg", 0.82) };
+    ai.pending.push(id);
+    project.uploads.push(u);
+  }
+  renderAttachments();
+  commit();
+}
+
+// ---------- Voice typing (Chrome / Edge) ----------
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+
+function toggleMic(target, btn, onDone) {
+  if (!SpeechRec) { toast("Voice typing works in Google Chrome or Microsoft Edge"); return; }
+  if (recognition) { recognition.stop(); return; }
+  recognition = new SpeechRec();
+  recognition.lang = ai.settings.voiceLang || "ur-PK";
+  recognition.interimResults = true;
+  const before = target.value ? target.value.replace(/\s*$/, " ") : "";
+  recognition.onresult = (e) => {
+    target.value = before + [...e.results].map((r) => r[0].transcript).join("");
+    target.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+  recognition.onerror = (e) => {
+    toast(e.error === "not-allowed" ? "Microphone access was blocked — allow it in the browser's address bar" :
+      e.error === "no-speech" ? "Didn't hear anything — try again" : "Voice typing error: " + e.error);
+  };
+  recognition.onend = () => {
+    recognition = null;
+    btn.classList.remove("rec");
+    onDone?.();
+  };
+  btn.classList.add("rec");
+  recognition.start();
+  toast("Listening… speak now");
+}
+
+// ---------- Talking to the AI ----------
+async function sendChat(text) {
+  text = (text || "").trim();
+  if (ai.busy || (!text && !ai.pending.length)) return;
+  ai.messages.push({ role: "user", content: text || "(picture)", images: ai.pending.splice(0) });
+  ai.busy = true;
+  ai.status = "AI is working";
+  if ($("chatInput")) $("chatInput").value = "";
+  renderAttachments();
+  renderChat();
+  try {
+    const data = await callAI();
+    const note = await applyAI(data);
+    ai.messages.push({ role: "assistant", content: String(data.reply || note || "Done."), note });
+  } catch (err) {
+    ai.messages.push({ role: "assistant", content: "⚠️ " + err.message, error: true });
+  }
+  ai.busy = false;
+  renderChat();
+}
+
+// What the AI can "see": the course details and the text on every page.
+function pageText(p, max) {
+  const t = p.elements.filter((e) => e.type === "text" || e.type === "tag").map((e) => e.text.replace(/\s+/g, " ")).join(" | ");
+  return t.length > max ? t.slice(0, max) + "…" : t;
+}
+
+function projectContext(canSee) {
+  const imgs = Object.entries(ai.images).map(([id, im]) => `${id} (${im.name}, ${im.w}x${im.h})`);
+  return `CURRENT PROJECT
+Course title: ${project.title}
+Description: ${project.description || "-"}
+Category: ${project.category || "-"} | Level: ${project.level}
+Course tags: ${project.tags.join(", ") || "-"}
+Page size: ${project.w}x${project.h} (${project.w >= project.h ? "landscape" : "portrait"})
+Theme: ${project.aiTheme || "blue"} | Style: ${project.aiStyle || "modern"}
+USER IMAGES: ${imgs.join(", ") || "none"}${imgs.length && !canSee ? " (you cannot see them with the current AI service, but you can place them with image_ref)" : ""}
+Pages:
+${project.pages.slice(0, 40).map((p, i) => `${i + 1}. ${p.name}${p.layout ? ` [${p.layout}]` : ""}${i === pageIndex ? " (CURRENT)" : ""} — ${pageText(p, i === pageIndex ? 1500 : 200)}`).join("\n")}`;
+}
+
+async function callAI() {
+  const prov = AI_PROVIDERS[ai.settings.provider] || AI_PROVIDERS.custom;
+  const recent = ai.messages.slice(-10);
+  const lastUser = recent.findLast((m) => m.role === "user");
+  const sendImages = !!(prov.vision && lastUser?.images?.length);
+  const msgs = [
+    { role: "system", content: AI_SYSTEM_PROMPT + "\n\n" + projectContext(prov.vision) },
+    ...recent.map((m) => {
+      let text = m.note ? `${m.content}\n[${m.note}]` : m.content;
+      if (m.images?.length) text += `\n[Attached: ${m.images.join(", ")}]`;
+      if (m === lastUser && sendImages) {
+        return { role: "user", content: [{ type: "text", text }, ...m.images.map((id) => ({ type: "image_url", image_url: { url: ai.images[id].visionSrc } }))] };
+      }
+      return { role: m.role, content: text };
+    }),
+  ];
+  const model = sendImages && prov.visionModel ? prov.visionModel : ai.settings.model;
+  let raw = await llm(msgs, model);
+  let data = parseAIJson(raw);
+  if (!data) {
+    msgs.push({ role: "assistant", content: raw }, { role: "user", content: "That was not valid JSON. Reply again with only the JSON object described in the instructions." });
+    raw = await llm(msgs, model);
+    data = parseAIJson(raw);
+  }
+  return data || { reply: raw.trim(), action: "none" };
+}
+
+// Free services limit how often you can ask. When they say "retry after N seconds", wait and try again.
+async function llm(messages, model, attempt = 0) {
+  try {
+    return await llmOnce(messages, model);
+  } catch (err) {
+    const wait = err.retryAfter;
+    if (!wait || attempt >= 2 || wait > 90) throw err;
+    setTyping(`Free AI limit — waiting ${wait} seconds`);
+    await sleep(wait * 1000);
+    setTyping("AI is working");
+    return llm(messages, model, attempt + 1);
+  }
+}
+
+function setTyping(text) {
+  ai.status = text;
+  renderChat();
+}
+
+async function llmOnce(messages, model) {
+  const s = ai.settings;
+  if (!s.url) throw new Error("Add the API URL in AI settings first.");
+  const headers = { "Content-Type": "application/json" };
+  if (s.key) headers.Authorization = "Bearer " + s.key;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 120000);
+  let res;
+  try {
+    res = await fetch(s.url, { method: "POST", headers, signal: ctrl.signal, body: JSON.stringify({ model, messages, temperature: 0.7 }) });
+  } catch (e) {
+    throw new Error(e.name === "AbortError" ? "The AI took too long to answer. Please try again." : "Couldn't reach the AI service. Check your internet connection and the API URL in AI settings.");
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!res.ok) {
+    const body = await res.text();
+    if (res.status === 401 || res.status === 403) throw new Error("The AI service refused the API key. Check the key in AI settings.");
+    if (res.status === 402 || res.status === 429) {
+      const err = new Error("The free AI service is busy (too many requests). Wait a minute and try again, or add a free key in AI settings.");
+      const m = body.match(/retry after (\d+)/i) || [null, res.headers.get("retry-after")];
+      err.retryAfter = Math.ceil(+m[1] || 45) + 1;
+      throw err;
+    }
+    if (/image/i.test(body) && /support/i.test(body)) throw new Error("This AI model can't read pictures. In AI settings choose Google Gemini or Groq (free keys) to read images.");
+    throw new Error(`AI service error ${res.status}: ${body.slice(0, 200)}`);
+  }
+  const content = (await res.json()).choices?.[0]?.message?.content;
+  if (!content) throw new Error("The AI returned an empty answer. Please try again.");
+  return content;
+}
+
+function parseAIJson(raw) {
+  const text = String(raw).replace(/```(?:json)?/gi, "");
+  const start = text.indexOf("{"), end = text.lastIndexOf("}");
+  if (start < 0 || end <= start) return null;
+  try {
+    const d = JSON.parse(text.slice(start, end + 1));
+    return d && typeof d === "object" ? d : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function applyAI(d) {
+  const slides = (Array.isArray(d.slides) ? d.slides : []).filter((x) => x && typeof x === "object");
+  const c = d.course && typeof d.course === "object" ? d.course : null;
+  const setCourse = () => {
+    if (!c) return;
+    for (const k of ["title", "description", "category", "level"]) if (typeof c[k] === "string" && c[k].trim()) project[k] = c[k].trim();
+    if (Array.isArray(c.tags) && c.tags.length) project.tags = c.tags.map(String).slice(0, 10);
+  };
+  const setLook = () => {
+    if (AI_THEMES[d.theme]) project.aiTheme = d.theme;
+    if (AI_STYLES[d.style]) project.aiStyle = d.style;
+  };
+  let note;
+  let made = [];
+
+  if (d.action === "new_presentation" && slides.length) {
+    setCourse();
+    setLook();
+    made = slides.map((sl, i) => buildSlide(sl, project.aiTheme, project.aiStyle, i));
+    project.pages = made;
+    pageIndex = 0;
+    note = `Created ${made.length} slides (${AI_THEMES[project.aiTheme || "blue"].name} · ${AI_STYLES[project.aiStyle || "modern"]}) — press Undo to go back`;
+  } else if (d.action === "add_slides" && slides.length) {
+    made = slides.map((sl, i) => buildSlide(sl, project.aiTheme, project.aiStyle, pageIndex + i));
+    project.pages.splice(pageIndex + 1, 0, ...made);
+    pageIndex += 1;
+    note = `Added ${made.length} slide(s)`;
+  } else if (d.action === "replace_current" && slides.length) {
+    made = [buildSlide(slides[0], project.aiTheme, project.aiStyle, curPage().variant || 0)];
+    project.pages[pageIndex] = made[0];
+    note = "Updated this slide — press Undo to go back";
+  } else if (d.action === "update_course" && c) {
+    setCourse();
+    note = "Updated course details";
+  } else if (d.action === "restyle" && (AI_THEMES[d.theme] || AI_STYLES[d.style])) {
+    setLook();
+    const n = restyleAll();
+    note = `Restyled ${n} slide(s) — ${AI_THEMES[project.aiTheme || "blue"].name} · ${AI_STYLES[project.aiStyle || "modern"]}`;
+  } else {
+    return "";
+  }
+
+  fillContents();
+  selectedId = null;
+  renderAll();
+  commit();
+  if (ai.settings.images && made.some((p) => p.pendingImage)) fillImages(made.map((p) => p.id));
+  return note;
+}
+
+// Rebuild a designed page from its saved content with the current theme/style (or another layout variation).
+function rebuildPage(p, variant) {
+  const np = buildSlide(p.spec, project.aiTheme, project.aiStyle, variant);
+  Object.assign(np, { id: p.id, name: p.name, tags: p.tags, notes: p.notes });
+  return np;
+}
+
+function restyleAll() {
+  let n = 0;
+  project.pages = project.pages.map((p) => (p.spec ? (n++, rebuildPage(p, p.variant || 0)) : p));
+  fillContents();
+  return n;
+}
+
+// ---------- Layout builders ----------
+function fitSize(text, w, maxH, base, min, family, bold, lineHeight) {
+  let size = Math.round(base);
+  for (; size > min; size--) {
+    measureCtx.font = `${bold ? 700 : 400} ${size}px "${family}"`;
+    if (wrapLines(measureCtx, text, w).length * size * lineHeight <= maxH) break;
+  }
+  return size;
+}
+
+function textHeight(el) {
+  measureCtx.font = `${el.bold ? 700 : 400} ${el.fontSize}px "${el.fontFamily}"`;
+  return wrapLines(measureCtx, el.text, el.w).length * el.fontSize * (el.lineHeight || 1.25);
+}
+
+// A text box that shrinks its font until the text fits [x, y, w, maxH].
+// Urdu/Arabic text gets a Nastaliq font, taller lines and right alignment.
+function aiText(text, [x, y, w, maxH], size, t, o = {}) {
+  text = String(text ?? "").trim();
+  if (!text) return null;
+  const rtl = RTL.test(text);
+  const family = rtl ? "Noto Nastaliq Urdu" : o.head ? t.head : t.body;
+  const lineHeight = rtl ? 1.9 : o.lineHeight || 1.25;
+  const base = rtl ? size * 0.8 : size;
+  const fontSize = fitSize(text, w, maxH, base, Math.max(10, base * 0.45), family, o.bold, lineHeight);
+  let align = o.align || "left";
+  if (rtl && align === "left") align = "right";
+  const el = T(text, x, y, w, { fontSize, fontFamily: family, lineHeight, color: o.color || t.text, bold: !!o.bold, italic: !!o.italic, align });
+  if (o.middle) el.y = Math.round(y + (maxH - textHeight(el)) / 2); // centre vertically in the box
+  return el;
+}
+
+const strList = (a, n = 8) => (Array.isArray(a) ? a : []).map((v) => String(v ?? "").trim()).filter(Boolean).slice(0, n);
+const bulletText = (a, mark = "•") => strList(a).map((b) => `${mark} ${b}`).join("\n");
+
+function centerRow(els, W) {
+  const total = els.reduce((sum, e) => sum + e.w + 12, -12);
+  let x = (W - total) / 2;
+  for (const e of els) { e.x = Math.round(x); x += e.w + 12; }
+  return els;
+}
+
+// Slide title in the chosen style; returns the box left for the slide's content.
+function header(p, title, t, st, W, H, s) {
+  const rtl = RTL.test(title || "");
+  switch (st) {
+    case "bold":
+      p.elements.push(
+        S("rect", 0, 0, W, H * 0.24, { fill: t.accent }),
+        aiText(title, [W * 0.07, H * 0.04, W * 0.86, H * 0.16], 44 * s, t, { head: true, bold: true, color: t.onAccent, middle: true }),
+      );
+      return { x: W * 0.07, y: H * 0.32, w: W * 0.86, h: H * 0.6 };
+    case "minimal":
+      p.elements.push(
+        aiText(title, [W * 0.07, H * 0.09, W * 0.86, H * 0.16], 40 * s, t, { head: true }),
+        S("rect", W * 0.07, H * 0.27, W * 0.86, Math.max(1, 1.5 * s), { fill: t.muted, opacity: 0.35 }),
+      );
+      return { x: W * 0.07, y: H * 0.33, w: W * 0.86, h: H * 0.58 };
+    case "playful":
+      p.elements.push(
+        S("ellipse", W - H * 0.32, -H * 0.18, H * 0.5, H * 0.5, { fill: t.soft }),
+        S("ellipse", -H * 0.12, H * 0.82, H * 0.3, H * 0.3, { fill: t.soft }),
+        S("ellipse", rtl ? W * 0.91 : W * 0.07, H * 0.13, 26 * s, 26 * s, { fill: t.accent }),
+        aiText(title, [rtl ? W * 0.07 : W * 0.11, H * 0.08, W * 0.82, H * 0.18], 44 * s, t, { head: true, bold: true }),
+      );
+      return { x: W * 0.07, y: H * 0.32, w: W * 0.86, h: H * 0.6 };
+    case "split":
+      p.elements.push(
+        S("rect", rtl ? W * 0.66 : 0, 0, W * 0.34, H, { fill: t.cover }),
+        S("rect", rtl ? W * 0.69 : W * 0.04, H * 0.12, W * 0.05, Math.max(3, 6 * s), { fill: t.onCover, opacity: 0.6 }),
+        aiText(title, [rtl ? W * 0.69 : W * 0.04, H * 0.18, W * 0.26, H * 0.64], 42 * s, t, { head: true, bold: true, color: t.onCover }),
+      );
+      return { x: rtl ? W * 0.05 : W * 0.4, y: H * 0.12, w: W * 0.55, h: H * 0.78 };
+    default: // modern
+      p.elements.push(
+        aiText(title, [W * 0.07, H * 0.08, W * 0.86, H * 0.18], 44 * s, t, { head: true, bold: true }),
+        S("rect", rtl ? W * 0.87 : W * 0.07, H * 0.27, W * 0.06, Math.max(3, 6 * s), { fill: t.accent, radius: 3 * s }),
+      );
+      return { x: W * 0.07, y: H * 0.34, w: W * 0.86, h: H * 0.58 };
+  }
+}
+
+function cardsGrid(p, items, b, t, s, mark) {
+  const n = Math.max(1, items.length), cols = n <= 3 ? n : n === 4 ? 2 : 3, rows = Math.ceil(n / cols);
+  const g = 18 * s, pad = 22 * s, top = mark ? 44 * s : 22 * s;
+  const cw = (b.w - (cols - 1) * g) / cols, ch = (b.h - (rows - 1) * g) / rows;
+  items.forEach((text, i) => {
+    const x = b.x + (i % cols) * (cw + g), y = b.y + Math.floor(i / cols) * (ch + g);
+    p.elements.push(
+      S("rect", x, y, cw, ch, { fill: t.soft, radius: 16 * s }),
+      mark ? T(mark, x + pad, y + pad * 0.8, 40 * s, { fontSize: 24 * s, fontFamily: "Segoe UI Emoji" })
+        : S("rect", x + pad, y + pad, 36 * s, Math.max(3, 5 * s), { fill: t.accent, radius: 3 * s }),
+      aiText(text, [x + pad, y + pad + top, cw - 2 * pad, ch - 2 * pad - top], 26 * s, t, { lineHeight: 1.4 }),
+    );
+  });
+}
+
+// Numbered rows: [{title?, text}]
+function numberedRows(p, rows, b, t, s) {
+  const n = Math.max(1, rows.length), rh = b.h / n, dia = Math.min(rh * 0.62, 52 * s);
+  rows.forEach((r, i) => {
+    const y = b.y + i * rh;
+    const rtl = RTL.test((r.title || "") + (r.text || ""));
+    const cx = rtl ? b.x + b.w - dia : b.x, tx = rtl ? b.x : b.x + dia + 22 * s, tw = b.w - dia - 22 * s;
+    const num = dia * 0.45;
+    p.elements.push(
+      S("ellipse", cx, y + (rh - dia) / 2, dia, dia, { fill: t.accent }),
+      T(String(i + 1), cx, y + rh / 2 - num * 0.625, dia, { fontSize: num, bold: true, color: t.onAccent, align: "center" }),
+    );
+    if (r.title) {
+      p.elements.push(
+        aiText(r.title, [tx, y + rh * 0.08, tw, rh * 0.4], 26 * s, t, { bold: true }),
+        aiText(r.text, [tx, y + rh * 0.5, tw, rh * 0.44], 20 * s, t, { color: t.muted }),
+      );
+    } else {
+      p.elements.push(aiText(r.text, [tx, y + rh * 0.1, tw, rh * 0.8], 28 * s, t, { middle: true }));
+    }
+  });
+}
+
+// A picture area: the user's image, an AI picture already made, or a placeholder the AI fills in later.
+function imageSlot(p, d, box, t, s) {
+  const radius = 18 * s;
+  if (d._imageSrc) {
+    const k = Math.min(box.w / (d._imageW || box.w), box.h / (d._imageH || box.h));
+    const w = (d._imageW || box.w) * k, h = (d._imageH || box.h) * k;
+    p.elements.push({ id: uid(), type: "image", src: d._imageSrc, x: box.x + (box.w - w) / 2, y: box.y + (box.h - h) / 2, w, h, rotation: 0, opacity: 1, radius });
+    return;
+  }
+  const ph = S("rect", box.x, box.y, box.w, box.h, { fill: t.soft, radius });
+  const label = T("🖼️\nAdd an image from Uploads", box.x, box.y + box.h / 2 - 20 * s * 1.25, box.w, { fontSize: 20 * s, align: "center", color: t.muted });
+  p.elements.push(ph, label);
+  if (d.image_prompt) p.pendingImage = { ...box, radius, prompt: String(d.image_prompt), ids: [ph.id, label.id] };
+}
+
+const AI_LAYOUTS = {
+  cover(p, d, t, W, H, s, st) {
+    const title = d.title || project.title, sub = d.subtitle, tags = strList(d.tags, 4);
+    const kicker = String(d.kicker || project.level || "Course").toUpperCase();
+    switch (st) {
+      case "bold":
+        p.bg = t.cover; p.bgGradient = t.cover2;
+        p.elements.push(
+          S("ellipse", -H * 0.3, -H * 0.3, H * 0.9, H * 0.9, { fill: "#ffffff", opacity: 0.07 }),
+          S("ellipse", W - H * 0.5, H * 0.55, H * 0.8, H * 0.8, { fill: "#ffffff", opacity: 0.07 }),
+          ...centerRow([TAG(kicker, 0, H * 0.15, { fontSize: 18 * s, fill: "#facc15", color: "#1d2433" })], W),
+          aiText(title, [W * 0.1, H * 0.26, W * 0.8, H * 0.32], 74 * s, t, { head: true, bold: true, color: t.onCover, align: "center" }),
+          aiText(sub, [W * 0.15, H * 0.61, W * 0.7, H * 0.12], 24 * s, t, { color: t.onCover, align: "center" }),
+          ...centerRow(tagRow(tags, 0, H * 0.79, { fontSize: 18 * s, fill: "#ffffff", color: t.cover }), W),
+        );
+        break;
+      case "minimal":
+        p.elements.push(
+          S("rect", 0, 0, W * 0.012, H, { fill: t.accent }),
+          TAG(kicker, W * 0.08, H * 0.15, { fontSize: 16 * s, fill: t.soft, color: t.accent }),
+          aiText(title, [W * 0.08, H * 0.26, W * 0.76, H * 0.33], 70 * s, t, { head: true, bold: true }),
+          S("rect", W * 0.08, H * 0.63, W * 0.08, Math.max(2, 3 * s), { fill: t.accent }),
+          aiText(sub, [W * 0.08, H * 0.67, W * 0.6, H * 0.12], 24 * s, t, { color: t.muted }),
+          ...tagRow(tags, W * 0.08, H * 0.84, { fontSize: 16 * s, fill: t.soft, color: t.text }),
+        );
+        break;
+      case "playful":
+        p.bg = t.soft;
+        p.elements.push(
+          S("ellipse", W * 0.62, -H * 0.25, H * 1.0, H * 1.0, { fill: t.accent, opacity: 0.9 }),
+          S("ellipse", W * 0.55, H * 0.62, H * 0.45, H * 0.45, { fill: t.cover2, opacity: 0.55 }),
+          S("ellipse", W * 0.04, H * 0.83, H * 0.12, H * 0.12, { fill: t.accent, opacity: 0.45 }),
+          TAG(kicker, W * 0.07, H * 0.14, { fontSize: 18 * s, fill: t.accent, color: t.onAccent }),
+          aiText(title, [W * 0.07, H * 0.25, W * 0.53, H * 0.34], 64 * s, t, { head: true, bold: true }),
+          aiText(sub, [W * 0.07, H * 0.62, W * 0.48, H * 0.14], 24 * s, t, { color: t.muted }),
+          ...tagRow(tags, W * 0.07, H * 0.8, { fontSize: 18 * s, fill: "#ffffff", color: t.accent }),
+        );
+        break;
+      case "split":
+        p.elements.push(
+          S("rect", 0, 0, W * 0.56, H, { fill: t.cover }),
+          TAG(kicker, W * 0.06, H * 0.14, { fontSize: 18 * s, fill: "#facc15", color: "#1d2433" }),
+          aiText(title, [W * 0.06, H * 0.25, W * 0.46, H * 0.34], 60 * s, t, { head: true, bold: true, color: t.onCover }),
+          aiText(sub, [W * 0.06, H * 0.62, W * 0.44, H * 0.14], 22 * s, t, { color: t.onCover }),
+          ...tagRow(tags, W * 0.06, H * 0.82, { fontSize: 16 * s, fill: "#ffffff", color: t.cover }),
+        );
+        imageSlot(p, d, { x: W * 0.6, y: H * 0.1, w: W * 0.34, h: H * 0.8 }, t, s);
+        break;
+      default:
+        p.bg = t.cover; p.bgGradient = t.cover2;
+        p.elements.push(
+          S("ellipse", W * 0.66, -H * 0.2, H * 0.95, H * 0.95, { fill: "#ffffff", opacity: 0.08 }),
+          S("ellipse", W * 0.82, H * 0.6, H * 0.5, H * 0.5, { fill: "#ffffff", opacity: 0.1 }),
+          TAG(kicker, W * 0.07, H * 0.13, { fontSize: 18 * s, fill: "#facc15", color: "#1d2433" }),
+          aiText(title, [W * 0.07, H * 0.24, W * 0.62, H * 0.3], 64 * s, t, { head: true, bold: true, color: t.onCover }),
+          aiText(sub, [W * 0.07, H * 0.57, W * 0.56, H * 0.15], 24 * s, t, { color: t.onCover }),
+          ...tagRow(tags, W * 0.07, H * 0.78, { fontSize: 18 * s, fill: "#ffffff", color: t.cover }),
+        );
+    }
+  },
+  section(p, d, t, W, H, s, st) {
+    switch (st) {
+      case "bold":
+        p.bg = t.accent;
+        p.elements.push(
+          S("ellipse", W * 0.7, H * 0.35, H * 0.9, H * 0.9, { fill: "#ffffff", opacity: 0.1 }),
+          aiText(d.kicker, [W * 0.08, H * 0.24, W * 0.6, H * 0.08], 24 * s, t, { bold: true, color: t.onAccent }),
+          aiText(d.title, [W * 0.08, H * 0.33, W * 0.7, H * 0.26], 62 * s, t, { head: true, bold: true, color: t.onAccent }),
+          aiText(d.subtitle, [W * 0.08, H * 0.62, W * 0.6, H * 0.2], 24 * s, t, { color: t.onAccent }),
+        );
+        break;
+      case "minimal":
+        p.elements.push(
+          aiText(d.kicker, [W * 0.08, H * 0.2, W * 0.6, H * 0.1], 30 * s, t, { head: true, color: t.accent }),
+          S("rect", W * 0.08, H * 0.32, W * 0.84, Math.max(1, 1.5 * s), { fill: t.muted, opacity: 0.35 }),
+          aiText(d.title, [W * 0.08, H * 0.37, W * 0.8, H * 0.24], 58 * s, t, { head: true, bold: true }),
+          aiText(d.subtitle, [W * 0.08, H * 0.64, W * 0.6, H * 0.2], 22 * s, t, { color: t.muted }),
+        );
+        break;
+      case "playful":
+        p.bg = t.soft;
+        p.elements.push(
+          S("ellipse", W * 0.7, -H * 0.15, H * 0.75, H * 0.75, { fill: t.accent, opacity: 0.85 }),
+          S("ellipse", W * 0.84, H * 0.62, H * 0.32, H * 0.32, { fill: t.cover2, opacity: 0.5 }),
+          ...(d.kicker ? [TAG(String(d.kicker), W * 0.08, H * 0.24, { fontSize: 20 * s, fill: t.accent, color: t.onAccent })] : []),
+          aiText(d.title, [W * 0.08, H * 0.35, W * 0.6, H * 0.26], 58 * s, t, { head: true, bold: true }),
+          aiText(d.subtitle, [W * 0.08, H * 0.63, W * 0.55, H * 0.2], 24 * s, t, { color: t.muted }),
+        );
+        break;
+      case "split":
+        p.elements.push(
+          S("rect", 0, 0, W * 0.38, H, { fill: t.cover }),
+          aiText(d.kicker, [W * 0.04, H * 0.3, W * 0.3, H * 0.4], 54 * s, t, { head: true, bold: true, color: t.onCover, align: "center", middle: true }),
+          aiText(d.title, [W * 0.44, H * 0.28, W * 0.5, H * 0.28], 52 * s, t, { head: true, bold: true }),
+          aiText(d.subtitle, [W * 0.44, H * 0.6, W * 0.48, H * 0.22], 22 * s, t, { color: t.muted }),
+        );
+        break;
+      default:
+        p.elements.push(
+          S("ellipse", W * 0.74, H * 0.5, H * 0.7, H * 0.7, { fill: t.soft }),
+          S("rect", 0, 0, W * 0.035, H, { fill: t.accent }),
+          aiText(d.kicker, [W * 0.09, H * 0.24, W * 0.6, H * 0.08], 22 * s, t, { bold: true, color: t.accent }),
+          aiText(d.title, [W * 0.09, H * 0.33, W * 0.7, H * 0.25], 58 * s, t, { head: true, bold: true }),
+          aiText(d.subtitle, [W * 0.09, H * 0.6, W * 0.6, H * 0.2], 24 * s, t, { color: t.muted }),
+        );
+    }
+  },
+  bullets(p, d, t, W, H, s, st, v) {
+    const b = header(p, d.title, t, st, W, H, s);
+    const items = strList(d.bullets, 6);
+    if (v === 1) cardsGrid(p, items, b, t, s);
+    else if (v === 2) numberedRows(p, items.map((text) => ({ text })), b, t, s);
+    else p.elements.push(aiText(bulletText(items), [b.x, b.y, b.w, b.h], 34 * s, t, { color: t.muted, lineHeight: 1.6 }));
+  },
+  bullets_image(p, d, t, W, H, s, st, v) {
+    const b = header(p, d.title, t, st, W, H, s);
+    const imageLeft = (v === 1) !== RTL.test(d.title || "");
+    const iw = b.w * 0.44, gap = b.w * 0.05, tw = b.w - iw - gap;
+    p.elements.push(aiText(bulletText(d.bullets), [imageLeft ? b.x + iw + gap : b.x, b.y, tw, b.h], 30 * s, t, { color: t.muted, lineHeight: 1.6 }));
+    imageSlot(p, d, { x: imageLeft ? b.x : b.x + tw + gap, y: b.y, w: iw, h: b.h }, t, s);
+  },
+  two_column(p, d, t, W, H, s, st, v) {
+    const b = header(p, d.title, t, st, W, H, s);
+    const gap = b.w * 0.05, cw = (b.w - gap) / 2, pad = v === 1 ? 0 : 24 * s;
+    if (v === 1) p.elements.push(S("rect", b.x + cw + gap / 2 - 1, b.y, Math.max(1, 2 * s), b.h, { fill: t.muted, opacity: 0.3 }));
+    [d.left, d.right].forEach((col, i) => {
+      col = col || {};
+      const x = b.x + i * (cw + gap);
+      if (v !== 1) p.elements.push(S("rect", x, b.y, cw, b.h, { fill: t.soft, radius: 18 * s }));
+      p.elements.push(
+        aiText(col.heading, [x + pad, b.y + pad, cw - 2 * pad, b.h * 0.18], 30 * s, t, { head: true, bold: true, color: t.accent }),
+        aiText(bulletText(col.bullets), [x + pad, b.y + pad + b.h * 0.22, cw - 2 * pad, b.h * 0.78 - 2 * pad], 24 * s, t, { lineHeight: 1.5 }),
+      );
+    });
+  },
+  keypoints(p, d, t, W, H, s, st, v) {
+    const b = header(p, d.title, t, st, W, H, s);
+    const pts = (Array.isArray(d.points) ? d.points : []).filter(Boolean).slice(0, 3);
+    if (v === 1) { numberedRows(p, pts.map((pt) => ({ title: pt.title || " ", text: pt.text })), b, t, s); return; }
+    const g = b.w * 0.035, cw = (b.w - 2 * g) / 3, dia = 52 * s, pad = 22 * s;
+    pts.forEach((pt, i) => {
+      const x = b.x + i * (cw + g), ty = b.y + pad + dia + 16 * s;
+      p.elements.push(
+        S("rect", x, b.y, cw, b.h, { fill: t.soft, radius: 20 * s }),
+        S("ellipse", x + pad, b.y + pad, dia, dia, { fill: t.accent }),
+        T(String(i + 1), x + pad, b.y + pad + dia / 2 - 24 * s * 0.625, dia, { fontSize: 24 * s, bold: true, color: t.onAccent, align: "center" }),
+        aiText(pt.title, [x + pad, ty, cw - 2 * pad, b.h * 0.18], 26 * s, t, { bold: true }),
+        aiText(pt.text, [x + pad, ty + b.h * 0.2, cw - 2 * pad, b.y + b.h - pad - (ty + b.h * 0.2)], 21 * s, t, { color: t.muted, lineHeight: 1.4 }),
+      );
+    });
+  },
+  stats(p, d, t, W, H, s, st, v) {
+    const b = header(p, d.title, t, st, W, H, s);
+    const items = (Array.isArray(d.stats) ? d.stats : []).filter(Boolean).slice(0, 3);
+    const n = Math.max(1, items.length), g = b.w * 0.035, cw = (b.w - (n - 1) * g) / n;
+    items.forEach((it, i) => {
+      const x = b.x + i * (cw + g);
+      if (v === 1) {
+        if (i > 0) p.elements.push(S("rect", x - g / 2, b.y + b.h * 0.15, Math.max(1, 2 * s), b.h * 0.7, { fill: t.muted, opacity: 0.3 }));
+      } else p.elements.push(S("rect", x, b.y, cw, b.h, { fill: t.soft, radius: 20 * s }));
+      p.elements.push(
+        aiText(it.value, [x + 16 * s, b.y + b.h * 0.12, cw - 32 * s, b.h * 0.34], v === 1 ? 80 * s : 64 * s, t, { head: true, bold: true, color: t.accent, align: "center", middle: true }),
+        aiText(it.label, [x + 16 * s, b.y + b.h * 0.52, cw - 32 * s, b.h * 0.4], 21 * s, t, { color: t.muted, align: "center" }),
+      );
+    });
+  },
+  quote(p, d, t, W, H, s, st) {
+    const bold = st === "bold";
+    p.bg = bold ? t.accent : st === "minimal" ? t.bg : t.soft;
+    const color = bold ? t.onAccent : t.text;
+    if (st === "playful") p.elements.push(S("ellipse", -H * 0.2, -H * 0.2, H * 0.6, H * 0.6, { fill: t.accent, opacity: 0.25 }), S("ellipse", W - H * 0.35, H * 0.7, H * 0.5, H * 0.5, { fill: t.cover2, opacity: 0.2 }));
+    if (st === "split") {
+      p.elements.push(
+        S("rect", 0, 0, W * 0.3, H, { fill: t.cover }),
+        T("“", 0, H * 0.25, W * 0.3, { fontSize: 220 * s, align: "center", color: t.onCover, fontFamily: "Playfair Display" }),
+        aiText(d.quote, [W * 0.36, H * 0.22, W * 0.56, H * 0.42], 40 * s, t, { head: true, italic: true }),
+        aiText(d.author ? "— " + d.author : "", [W * 0.36, H * 0.7, W * 0.56, H * 0.08], 22 * s, t, { color: t.muted }),
+      );
+      return;
+    }
+    p.elements.push(
+      T("“", W * 0.1, H * 0.06, W * 0.8, { fontSize: 160 * s, align: "center", color: bold ? t.onAccent : t.accent, fontFamily: "Playfair Display" }),
+      aiText(d.quote, [W * 0.12, H * 0.36, W * 0.76, H * 0.32], 38 * s, t, { head: true, italic: true, align: "center", color }),
+      aiText(d.author ? "— " + d.author : "", [W * 0.12, H * 0.74, W * 0.76, H * 0.08], 22 * s, t, { color: bold ? t.onAccent : t.muted, align: "center" }),
+    );
+  },
+  quiz(p, d, t, W, H, s, st) {
+    const b = header(p, d.question, t, st, W, H, s);
+    const opts = strList(d.options, 4);
+    const gx = b.w * 0.03, gy = b.h * 0.07, ow = (b.w - gx) / 2, oh = Math.min((b.h - gy) / 2, H * 0.2);
+    opts.forEach((o, i) => {
+      const x = b.x + (i % 2) * (ow + gx), y = b.y + Math.floor(i / 2) * (oh + gy), dia = Math.min(oh * 0.5, 40 * s);
+      p.elements.push(
+        S("rect", x, y, ow, oh, st === "minimal" ? { fill: t.bg, stroke: t.muted, strokeWidth: Math.max(1, s), radius: 10 * s }
+          : st === "bold" ? { fill: t.soft, radius: 14 * s } : { fill: st === "playful" ? "#ffffff" : t.bg, stroke: t.accent, strokeWidth: Math.max(1, 2 * s), radius: (st === "playful" ? 30 : 14) * s }),
+        S("ellipse", x + 18 * s, y + (oh - dia) / 2, dia, dia, { fill: t.accent }),
+        T("ABCD"[i], x + 18 * s, y + oh / 2 - dia * 0.5 * 0.625, dia, { fontSize: dia * 0.5, bold: true, color: t.onAccent, align: "center" }),
+        aiText(o, [x + 30 * s + dia, y + oh * 0.12, ow - 48 * s - dia, oh * 0.76], 22 * s, t, { middle: true }),
+      );
+    });
+    const a = Number(d.answer);
+    if (Number.isInteger(a) && a >= 0 && a < opts.length) p.notes = (p.notes ? p.notes + "\n" : "") + `Answer: ${"ABCD"[a]}`;
+  },
+  summary(p, d, t, W, H, s, st, v) {
+    const b = header(p, d.title || "Summary", t, st, W, H, s);
+    const items = strList(d.bullets, 6);
+    if (v === 1) cardsGrid(p, items, b, t, s, "✅");
+    else p.elements.push(aiText(bulletText(items, "✅"), [b.x, b.y, b.w, b.h], 34 * s, t, { lineHeight: 1.6 }));
+  },
+  contents(p, d, t, W, H, s, st) {
+    const b = header(p, d.title || "Contents", t, st, W, H, s);
+    const list = T("…", b.x, b.y, b.w, { fontSize: 26 * s, color: t.muted, fontFamily: t.body, lineHeight: 1.5 });
+    p.contentsId = list.id;
+    p.contentsH = b.h;
+    p.elements.push(list);
+  },
+  certificate(p, d, t, W, H, s) {
+    const line = Math.max(1, 2 * s), seal = H * 0.16;
+    p.elements.push(
+      S("rect", W * 0.03, H * 0.05, W * 0.94, H * 0.9, { fill: "transparent", stroke: t.accent, strokeWidth: Math.max(2, 6 * s), radius: 8 * s }),
+      S("rect", W * 0.05, H * 0.085, W * 0.9, H * 0.83, { fill: "transparent", stroke: t.soft, strokeWidth: line }),
+      T("CERTIFICATE OF COMPLETION", W * 0.1, H * 0.16, W * 0.8, { fontSize: 34 * s, bold: true, align: "center", color: t.accent, fontFamily: "Playfair Display" }),
+      T("This certifies that", W * 0.1, H * 0.3, W * 0.8, { fontSize: 22 * s, align: "center", color: t.muted }),
+      T("Student Name", W * 0.1, H * 0.37, W * 0.8, { fontSize: 64 * s, align: "center", fontFamily: "Pacifico", color: t.text }),
+      aiText(`has successfully completed the course\n${project.title}`, [W * 0.15, H * 0.55, W * 0.7, H * 0.14], 22 * s, t, { align: "center" }),
+      S("rect", W * 0.14, H * 0.8, W * 0.22, line, { fill: t.text }),
+      T("Instructor", W * 0.14, H * 0.82, W * 0.22, { fontSize: 16 * s, align: "center", color: t.muted }),
+      S("rect", W * 0.64, H * 0.8, W * 0.22, line, { fill: t.text }),
+      T("Date", W * 0.64, H * 0.82, W * 0.22, { fontSize: 16 * s, align: "center", color: t.muted }),
+      S("ellipse", W / 2 - seal / 2, H * 0.72, seal, seal, { fill: t.accent }),
+      T("★", W / 2 - seal / 2, H * 0.72 + seal / 2 - 34 * s * 0.625, seal, { fontSize: 34 * s, align: "center", color: t.onAccent }),
+    );
+  },
+  thanks(p, d, t, W, H, s, st) {
+    const light = st === "minimal" || st === "playful";
+    if (st === "minimal") p.bg = t.bg;
+    else if (st === "playful") {
+      p.bg = t.soft;
+      p.elements.push(S("ellipse", -H * 0.25, -H * 0.25, H * 0.8, H * 0.8, { fill: t.accent, opacity: 0.8 }), S("ellipse", W - H * 0.45, H * 0.55, H * 0.7, H * 0.7, { fill: t.cover2, opacity: 0.45 }));
+    } else { p.bg = t.cover; p.bgGradient = t.cover2; }
+    p.elements.push(
+      aiText(d.title || "Thank you!", [W * 0.1, H * 0.3, W * 0.8, H * 0.22], 80 * s, t, { head: true, bold: true, align: "center", color: light ? t.text : t.onCover }),
+      ...(st === "minimal" ? [S("rect", W / 2 - W * 0.04, H * 0.54, W * 0.08, Math.max(2, 3 * s), { fill: t.accent })] : []),
+      aiText(d.subtitle, [W * 0.1, H * 0.58, W * 0.8, H * 0.15], 26 * s, t, { align: "center", color: light ? t.muted : t.onCover }),
+    );
+  },
+};
+
+function buildSlide(spec, themeKey = project.aiTheme, styleKey = project.aiStyle, variant = 0) {
+  const t = AI_THEMES[themeKey] || AI_THEMES.blue;
+  const st = AI_STYLES[styleKey] ? styleKey : "modern";
+  const layout = AI_LAYOUTS[spec.layout] ? spec.layout : "bullets";
+  spec = { ...spec, layout };
+  const userImg = spec.image_ref && ai.images[spec.image_ref];
+  if (userImg) Object.assign(spec, { _imageSrc: userImg.src, _imageW: userImg.w, _imageH: userImg.h }); // kept for later restyles
+  const p = newPage(String(spec.name || spec.title || spec.question || LAYOUT_NAMES[layout]).slice(0, 60));
+  p.bg = t.bg;
+  p.layout = layout;
+  p.spec = spec;
+  p.variant = variant % VARIANTS[layout].length;
+  p.notes = String(spec.notes || "");
+  p.tags = strList(spec.tags, 6);
+  AI_LAYOUTS[layout](p, spec, t, project.w, project.h, sc(), st, p.variant);
+  p.elements = p.elements.filter(Boolean);
+  return p;
+}
+
+// Fill every "contents" page with the current list of page names.
+function fillContents() {
+  for (const p of project.pages) {
+    const el = p.contentsId && p.elements.find((e) => e.id === p.contentsId);
+    if (!el) continue;
+    const names = project.pages.filter((x) => x !== p && x.layout !== "cover").map((x, i) => `${i + 1}.  ${x.name}`);
+    el.text = names.join("\n") || "…";
+    const rtl = RTL.test(el.text);
+    el.lineHeight = rtl ? 1.9 : 1.5;
+    if (rtl) { el.fontFamily = "Noto Nastaliq Urdu"; el.align = "right"; }
+    el.fontSize = fitSize(el.text, el.w, p.contentsH || project.h * 0.58, 26 * sc(), 10, el.fontFamily, false, el.lineHeight);
+  }
+}
+
+const blobToDataURL = (blob) => new Promise((resolve) => {
+  const r = new FileReader();
+  r.onload = () => resolve(r.result);
+  r.readAsDataURL(blob);
+});
+
+// The free image service is often busy; wait as long as it asks and try again a few times.
+async function fetchAIImage(pi) {
+  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(pi.prompt)}?width=${Math.round(pi.w)}&height=${Math.round(pi.h)}&nologo=true`;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const res = await fetch(`${url}&seed=${Math.floor(Math.random() * 1e6)}`);
+    if (res.ok && /^image\//.test(res.headers.get("content-type") || "")) return blobToDataURL(await res.blob());
+    if (![402, 429, 503].includes(res.status)) return null;
+    const m = (await res.text()).match(/retry after (\d+)/i);
+    await sleep((m ? +m[1] + 1 : 15) * 1000);
+  }
+  return null;
+}
+
+// Swap image placeholders for free AI-generated pictures (Pollinations). Failures keep the placeholder.
+async function fillImages(pageIds) {
+  const jobs = project.pages.filter((p) => pageIds.includes(p.id) && p.pendingImage);
+  let done = 0, failed = 0;
+  for (const job of jobs) {
+    const pi = job.pendingImage;
+    toast(`Creating pictures… ${++done} / ${jobs.length}`);
+    try {
+      const src = await fetchAIImage(pi);
+      if (!src) { failed++; continue; }
+      const page = project.pages.find((p) => p.id === job.id); // the project may have changed meanwhile
+      if (!page || !page.pendingImage) continue;
+      const at = Math.max(0, page.elements.findIndex((e) => e.id === pi.ids[0]));
+      page.elements = page.elements.filter((e) => !pi.ids.includes(e.id));
+      page.elements.splice(at, 0, { id: uid(), type: "image", src, x: pi.x, y: pi.y, w: pi.w, h: pi.h, rotation: 0, opacity: 1, radius: pi.radius });
+      if (page.spec) Object.assign(page.spec, { _imageSrc: src, _imageW: pi.w, _imageH: pi.h }); // survives restyling
+      delete page.pendingImage;
+      if (page === curPage()) { renderPage(); if (!selectedId) renderProps(); }
+      commit();
+    } catch (e) {
+      failed++; // keep the placeholder
+    }
+  }
+  if (failed) toast(`The free picture service is busy — select the slide and press “Create picture with AI” later`);
+}
+
+// ================= Start =================
+(async function init() {
+  loadSaved();
+  // Wait briefly for the web fonts so text measures correctly (works offline too, just with fallback fonts).
+  await Promise.race([
+    Promise.all(FONTS.slice(0, 5).map((f) => document.fonts.load(`16px "${f}"`))).catch(() => {}),
+    sleep(2500),
+  ]);
+  renderAll();
+  lastSnap = snapshot();
+  $("undoBtn").disabled = $("redoBtn").disabled = true;
+  document.fonts.addEventListener("loadingdone", () => renderPage());
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Tool</title>
+<style id="printStyle"></style>
+<style>
+  :root {
+    --bg: #f4f6fb;
+    --card: #ffffff;
+    --text: #1d2433;
+    --muted: #667085;
+    --accent: #2f6fed;
+    --accent-dark: #1f56c4;
+    --border: #e3e7ef;
+    --ok: #12855b;
+    --bad: #c0392b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    background: linear-gradient(120deg, #2f6fed, #7b4dff);
+    color: #fff;
+    padding: 24px 16px 18px;
+    text-align: center;
+  }
+  header h1 { margin: 0 0 6px; font-size: 28px; }
+  header p { margin: 0; opacity: .9; }
+  nav.top { display: flex; gap: 8px; justify-content: center; margin-top: 14px; }
+  nav.top a {
+    color: #fff; text-decoration: none; font-weight: 600; font-size: 14px;
+    background: rgba(255,255,255,.15); padding: 6px 16px; border-radius: 999px;
+  }
+  nav.top a.active { background: #fff; color: var(--accent); }
+  main { max-width: 1280px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(20, 30, 60, .04);
+    min-width: 0;
+  }
+  .card h2 { margin: 0 0 4px; font-size: 20px; }
+  .card h3 { margin: 18px 0 8px; font-size: 15px; }
+  .card h3:first-child { margin-top: 0; }
+  .hint { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
+
+  .drop {
+    border: 2px dashed #b8c3dd;
+    border-radius: 12px;
+    padding: 22px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+  }
+  .drop.over { background: #eaf0ff; border-color: var(--accent); }
+  .drop strong { color: var(--accent); }
+  input[type=file] { display: none; }
+
+  .row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .workspace { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .workspace > .card:first-child { position: sticky; top: 12px; }
+  @media (max-width: 900px) {
+    .workspace { grid-template-columns: 1fr; }
+    .workspace > .card:first-child { position: static; }
+    .grid2 { grid-template-columns: 1fr; }
+  }
+
+  label { font-size: 14px; color: var(--muted); }
+  input[type=range] { width: 160px; vertical-align: middle; }
+  select, input[type=number], input[type=text], input[type=color] {
+    padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; font: inherit; background: #fff;
+  }
+  input[type=number] { width: 90px; }
+  input[type=color] { padding: 2px; width: 42px; height: 34px; vertical-align: middle; }
+
+  button, .btn {
+    background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+    padding: 8px 14px; font: inherit; font-weight: 600; cursor: pointer;
+    text-decoration: none; display: inline-block;
+  }
+  button:hover, .btn:hover { background: var(--accent-dark); }
+  button.secondary { background: #e8edf8; color: var(--text); }
+  button.secondary:hover { background: #d9e1f3; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+  .tab { background: #eef2fa; color: var(--text); }
+  .tab:hover { background: #dfe6f5; }
+  .tab.active { background: var(--accent); color: #fff; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .checker {
+    background-color: #fff;
+    background-image:
+      linear-gradient(45deg, #e2e2e2 25%, transparent 25%),
+      linear-gradient(-45deg, #e2e2e2 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #e2e2e2 75%),
+      linear-gradient(-45deg, transparent 75%, #e2e2e2 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  }
+  .stage-wrap { text-align: center; border-radius: 10px; padding: 10px; border: 1px solid var(--border); }
+  .stage { position: relative; display: inline-block; max-width: 100%; vertical-align: top; }
+  #view { display: block; max-width: 100%; max-height: 62vh; touch-action: none; }
+  #view.pick { cursor: crosshair; }
+  #cropBox {
+    position: absolute; border: 2px dashed #fff; pointer-events: none;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, .5);
+  }
+  .stage { overflow: hidden; }
+  /* Face guide shown while choosing a passport photo area */
+  #cropBox.passport::after {
+    content: ""; position: absolute; left: 24%; right: 24%; top: 10%; bottom: 22%;
+    border: 2px dashed rgba(255, 255, 255, .85); border-radius: 50%;
+  }
+  .pp-preview { text-align: center; padding: 12px; border: 1px solid var(--border); border-radius: 10px; margin-top: 12px; background: #f4f6fb; }
+  .pp-preview canvas { max-width: 100%; max-height: 320px; box-shadow: 0 2px 10px rgba(0, 0, 0, .15); background: #fff; }
+  #printArea { display: none; }
+  @media print {
+    body > *:not(#printArea) { display: none !important; }
+    #printArea { display: block; }
+    body { background: #fff; margin: 0; }
+  }
+
+  .meta { font-size: 14px; color: var(--muted); margin-top: 8px; }
+  .meta b { color: var(--text); }
+  .saving { color: var(--ok); font-weight: 700; }
+
+  .slider-row { display: grid; grid-template-columns: 96px 1fr 52px; gap: 8px; align-items: center; margin: 4px 0; font-size: 14px; }
+  .slider-row input { width: 100%; }
+  .slider-row span:last-child { text-align: right; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button { padding: 6px 12px; font-size: 13px; }
+
+  .compare { position: relative; display: inline-block; max-width: 100%; }
+  .compare img { display: block; max-width: 100%; max-height: 42vh; }
+  .compare img.top { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .compare .divider { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; box-shadow: 0 0 4px rgba(0,0,0,.5); pointer-events: none; }
+  .compare-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 4px; }
+  #cmpPos { width: 100%; }
+
+  .checks { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .checks label {
+    border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px;
+    color: var(--text); cursor: pointer; user-select: none; font-size: 13px;
+  }
+  table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  td img { max-width: 64px; max-height: 44px; border-radius: 4px; }
+  td .btn { padding: 5px 10px; font-size: 13px; }
+
+  .swatch { display: inline-block; width: 22px; height: 22px; border-radius: 6px; border: 1px solid #999; vertical-align: middle; }
+  .palette { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 10px; }
+  .pal { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; cursor: pointer; font-size: 12px; text-align: center; background: #fff; }
+  .pal div { height: 52px; }
+  .pal span { display: block; padding: 5px 0; font-family: Consolas, monospace; }
+  .pal:hover { border-color: var(--accent); }
+  #picked { display: flex; gap: 12px; align-items: center; font-family: Consolas, monospace; font-size: 13px; }
+  #picked .big { width: 54px; height: 54px; border-radius: 10px; border: 1px solid var(--border); }
+
+  .toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    background: #1d2433; color: #fff; padding: 10px 18px; border-radius: 999px;
+    opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 10; font-size: 14px;
+  }
+  .toast.show { opacity: 1; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🖼️ Image Tool</h1>
+  <p>Edit, compress, resize, remove backgrounds and pick colours — all in your browser, nothing is uploaded</p>
+  <nav class="top">
+    <a href="index.html" class="active">Image Tool</a>
+    <a href="design.html">Course Designer</a>
+  </nav>
+</header>
+
+<main>
+  <!-- Upload -->
+  <section class="card">
+    <div class="drop" id="drop">
+      <div style="font-size:34px">📁</div>
+      <div><strong>Click to choose</strong>, drop an image here, or paste one with <b>Ctrl+V</b></div>
+    </div>
+    <input type="file" id="fileInput" accept="image/*">
+  </section>
+
+  <div id="tools" class="workspace hidden">
+    <!-- Left: current image -->
+    <section class="card">
+      <div id="info" class="meta" style="margin:0 0 10px"></div>
+      <div class="stage-wrap checker">
+        <div class="stage">
+          <canvas id="view"></canvas>
+          <div id="cropBox" class="hidden"></div>
+        </div>
+      </div>
+      <div id="stageHint" class="meta"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="secondary" id="undoBtn">↶ Undo</button>
+        <button class="secondary" id="resetBtn">⟲ Reset to original</button>
+        <button id="downloadCur">⬇ Download PNG</button>
+      </div>
+    </section>
+
+    <!-- Right: tools -->
+    <section class="card">
+      <div class="tabs">
+        <button class="tab active" data-tab="edit">✂️ Edit</button>
+        <button class="tab" data-tab="compress">🗜️ Compress</button>
+        <button class="tab" data-tab="resize">📐 Resize</button>
+        <button class="tab" data-tab="bg">🪄 Background</button>
+        <button class="tab" data-tab="colors">🎨 Colors</button>
+        <button class="tab" data-tab="passport">🪪 Passport</button>
+      </div>
+
+      <!-- EDIT -->
+      <div class="panel active" id="panel-edit">
+        <h3>Rotate &amp; flip</h3>
+        <div class="row">
+          <button class="secondary" id="rotL">⟲ Rotate left</button>
+          <button class="secondary" id="rotR">⟳ Rotate right</button>
+          <button class="secondary" id="flipH">⇋ Flip horizontal</button>
+          <button class="secondary" id="flipV">⇵ Flip vertical</button>
+        </div>
+
+        <h3>Crop</h3>
+        <div class="row">
+          <label>Aspect ratio
+            <select id="cropRatio">
+              <option value="0">Free</option>
+              <option value="1">1:1 Square</option>
+              <option value="1.3333">4:3</option>
+              <option value="0.75">3:4</option>
+              <option value="1.7778">16:9</option>
+              <option value="0.5625">9:16</option>
+              <option value="1.5">3:2</option>
+              <option value="0.8">4:5 (Instagram)</option>
+            </select>
+          </label>
+          <button class="secondary" id="cropStart">Start crop</button>
+          <button id="cropApply" class="hidden">✔ Apply crop</button>
+          <button class="secondary hidden" id="cropCancel">Cancel</button>
+        </div>
+
+        <h3>Adjust</h3>
+        <div class="chips" id="filterPresets" style="margin-bottom:10px"></div>
+        <div id="adjSliders"></div>
+        <div class="row" style="margin-top:10px">
+          <button id="adjApply">✔ Apply adjustments</button>
+          <button class="secondary" id="adjReset">Reset sliders</button>
+        </div>
+
+        <h3>Watermark</h3>
+        <div class="row">
+          <input type="text" id="wmText" placeholder="© Your name" style="flex:1;min-width:160px">
+          <input type="color" id="wmColor" value="#ffffff" title="Colour">
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label>Size <input type="range" id="wmSize" min="2" max="20" value="6"></label>
+          <label>Opacity <input type="range" id="wmOpacity" min="10" max="100" value="60"></label>
+          <label>Position
+            <select id="wmPos">
+              <option value="br">Bottom right</option>
+              <option value="bc">Bottom centre</option>
+              <option value="bl">Bottom left</option>
+              <option value="mc">Centre</option>
+              <option value="tr">Top right</option>
+              <option value="tc">Top centre</option>
+              <option value="tl">Top left</option>
+              <option value="tile">Repeat across image</option>
+            </select>
+          </label>
+          <button id="wmApply">✔ Add watermark</button>
+        </div>
+      </div>
+
+      <!-- COMPRESS -->
+      <div class="panel" id="panel-compress">
+        <p class="hint">Lower quality = smaller file. Or set a target size and the best quality is picked for you.</p>
+        <div class="row">
+          <label>Format
+            <select id="cFormat">
+              <option value="image/jpeg">JPEG</option>
+              <option value="image/webp">WebP</option>
+              <option value="image/png">PNG (lossless)</option>
+            </select>
+          </label>
+          <label>Quality: <b id="cQualityVal">70</b>%
+            <input type="range" id="cQuality" min="5" max="100" value="70">
+          </label>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <label><input type="checkbox" id="targetOn"> Compress to a target size of</label>
+          <label><input type="number" id="targetKB" min="5" value="100"> KB</label>
+        </div>
+        <div id="targetNote" class="meta"></div>
+
+        <div style="margin-top:14px;text-align:center">
+          <div class="compare checker" id="compare">
+            <img id="cmpBase" alt="Before">
+            <img id="cmpTop" class="top" alt="After">
+            <div class="divider" id="cmpDivider"></div>
+          </div>
+          <input type="range" id="cmpPos" min="0" max="100" value="50">
+          <div class="compare-labels"><span>◀ Before</span><span>After ▶</span></div>
+        </div>
+
+        <div class="grid2" style="margin-top:8px">
+          <div class="meta"><span id="baseLabel">Original</span>: <b id="baseSize">–</b></div>
+          <div class="meta">Compressed: <b id="compSize">–</b> <span id="compSaving" class="saving"></span></div>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <a id="compDownload" class="btn" download>⬇ Download compressed image</a>
+        </div>
+      </div>
+
+      <!-- RESIZE -->
+      <div class="panel" id="panel-resize">
+        <p class="hint">Format and quality come from the Compress tab.</p>
+        <h3>By width <span style="font-weight:400;color:var(--muted)">(height keeps the aspect ratio)</span></h3>
+        <div class="checks" id="widthBoxes"></div>
+        <div class="row">
+          <label>Custom width <input type="number" id="customW" min="16" max="8000" placeholder="600"></label>
+          <button class="secondary" id="addSize">+ Add</button>
+        </div>
+
+        <h3>Social media &amp; icon presets</h3>
+        <div class="checks" id="presetBoxes"></div>
+        <div class="row">
+          <label>Fit
+            <select id="fitMode">
+              <option value="cover">Crop to fill</option>
+              <option value="contain">Fit inside with padding</option>
+            </select>
+          </label>
+          <label>Padding colour <input type="color" id="padColor" value="#ffffff"></label>
+        </div>
+
+        <div class="row" style="margin-top:14px">
+          <button id="makeSizes">Generate sizes</button>
+          <button class="secondary hidden" id="downloadAll">⬇ Download all</button>
+        </div>
+        <table id="sizeTable" class="hidden">
+          <thead><tr><th></th><th>Size</th><th>File</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <!-- BACKGROUND -->
+      <div class="panel" id="panel-bg">
+        <p class="hint">Removes the background by its colour — best on plain, single-colour backgrounds.
+          The colour is guessed from the corners; <b>click the image on the left</b> to pick a different one.</p>
+        <div class="row">
+          <span style="font-size:14px">Background colour <span id="keySwatch" class="swatch"></span></span>
+          <label><input type="checkbox" id="contiguous" checked> Only background touching the edges</label>
+        </div>
+        <div class="slider-row"><span>Tolerance</span><input type="range" id="tol" min="1" max="200" value="40"><span id="tolVal">40</span></div>
+        <div class="slider-row"><span>Soft edges</span><input type="range" id="feather" min="0" max="100" value="20"><span id="featherVal">20</span></div>
+        <div class="row" style="margin:8px 0 12px">
+          <label><input type="radio" name="bgMode" value="transparent" checked> Transparent</label>
+          <label><input type="radio" name="bgMode" value="color"> New colour <input type="color" id="newBg" value="#ffffff"></label>
+        </div>
+        <div class="stage-wrap checker"><canvas id="bgCanvas" style="max-width:100%;max-height:42vh"></canvas></div>
+        <div class="row" style="margin-top:12px">
+          <button id="bgApply">✔ Apply to image</button>
+          <button class="secondary" id="bgDownload">⬇ Download PNG</button>
+        </div>
+      </div>
+
+      <!-- COLORS -->
+      <div class="panel" id="panel-colors">
+        <p class="hint">The main colours in your image. Click a colour to copy its code. Click the image on the left to pick any pixel.</p>
+        <div class="palette" id="palette"></div>
+        <h3>Picked colour</h3>
+        <div id="picked"><div class="big"></div><div>Click the image to pick a colour</div></div>
+      </div>
+
+      <!-- PASSPORT -->
+      <div class="panel" id="panel-passport">
+        <p class="hint">Make passport / ID photos and print several on one sheet. Best with a photo taken straight on, against a plain wall.
+          Always check the exact rules of the office you apply to.</p>
+        <h3>1. Photo size</h3>
+        <div class="row">
+          <label>Size <select id="ppSize"></select></label>
+          <span id="ppCustom" class="row hidden">
+            <label>W <input type="number" id="ppW" value="35" min="10" max="200"> mm</label>
+            <label>H <input type="number" id="ppH" value="45" min="10" max="200"> mm</label>
+          </span>
+        </div>
+        <h3>2. Position the face</h3>
+        <p class="hint" style="margin-bottom:8px">Press the button, then drag on the photo on the left. Keep the face inside the dotted oval with a little space above the head.</p>
+        <div class="row"><button class="secondary" id="ppCrop">✂️ Choose area</button></div>
+        <h3>3. Background</h3>
+        <div class="row">
+          <label><input type="radio" name="ppBg" value="keep" checked> Keep as is</label>
+          <label><input type="radio" name="ppBg" value="#ffffff"> White</label>
+          <label><input type="radio" name="ppBg" value="#dbeafe"> Light blue</label>
+          <label><input type="radio" name="ppBg" value="custom"> Colour <input type="color" id="ppBgColor" value="#e5e7eb"></label>
+        </div>
+        <div class="meta">Changing the background uses the Background tab's colour and tolerance — works best with a plain wall.</div>
+        <div class="row" style="margin-top:12px"><button id="ppMake">✔ Make passport photo</button></div>
+
+        <div id="ppResult" class="hidden">
+          <div class="pp-preview"><canvas id="ppCanvas"></canvas></div>
+          <div class="meta" id="ppInfo"></div>
+          <div class="row" style="margin-top:8px"><button class="secondary" id="ppDownload">⬇ Download photo (JPG, 300 DPI)</button></div>
+
+          <h3>4. Print sheet</h3>
+          <div class="row">
+            <label>Paper <select id="paper"></select></label>
+            <span id="paperCustom" class="row hidden">
+              <label>W <input type="number" id="paperW" value="102" min="30" max="600"> mm</label>
+              <label>H <input type="number" id="paperH" value="152" min="30" max="600"> mm</label>
+            </span>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <label>Copies <input type="number" id="ppCount" value="0" min="0" max="200"> <small>(0 = as many as fit)</small></label>
+            <label>Gap <input type="number" id="ppGap" value="3" min="0" max="30"> mm</label>
+            <label>Margin <input type="number" id="ppMargin" value="5" min="0" max="50"> mm</label>
+            <label><input type="checkbox" id="ppCutLines" checked> Cut lines</label>
+          </div>
+          <div class="row" style="margin-top:12px"><button id="sheetMake">Make sheet</button></div>
+          <div id="sheetResult" class="hidden">
+            <div class="pp-preview"><canvas id="sheetCanvas"></canvas></div>
+            <div class="meta" id="sheetInfo"></div>
+            <div class="row" style="margin-top:8px">
+              <button id="sheetPrint">🖨️ Print</button>
+              <button class="secondary" id="sheetDownload">⬇ Download sheet (JPG, 300 DPI)</button>
+            </div>
+            <p class="hint" style="margin-top:8px">In the print window pick the same paper size and set Scale to <b>100%</b> (or “Actual size”) so the photos come out at the right size.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Batch -->
+  <section class="card">
+    <h2>📦 Batch compress</h2>
+    <p class="hint">Compress and shrink many images at once.</p>
+    <div class="drop" id="batchDrop">
+      <div><strong>Click to choose</strong> or drop several images here</div>
+    </div>
+    <input type="file" id="batchInput" accept="image/*" multiple>
+    <div class="row" style="margin-top:12px">
+      <label>Format
+        <select id="bFormat">
+          <option value="image/jpeg">JPEG</option>
+          <option value="image/webp">WebP</option>
+          <option value="image/png">PNG</option>
+        </select>
+      </label>
+      <label>Quality: <b id="bQualityVal">70</b>%
+        <input type="range" id="bQuality" min="5" max="100" value="70">
+      </label>
+      <label>Max width <input type="number" id="bMaxW" min="0" value="1920"> px <span style="font-size:12px">(0 = keep)</span></label>
+      <button id="batchRun" disabled>Compress all</button>
+      <button class="secondary hidden" id="batchDownload">⬇ Download all</button>
+    </div>
+    <div id="batchSummary" class="meta"></div>
+    <table id="batchTable" class="hidden">
+      <thead><tr><th></th><th>File</th><th>Before</th><th>After</th><th>Saved</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+</main>
+
+<div id="printArea"></div>
+<div id="toast" class="toast"></div>
+
+<script>
+// ================= Helpers =================
+const $ = (id) => document.getElementById(id);
+const EXT = { "image/jpeg": "jpg", "image/webp": "webp", "image/png": "png" };
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / 1024 / 1024).toFixed(2) + " MB";
+}
+
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+function newCanvas(w, h) {
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  return c;
+}
+
+function canvasFrom(img) {
+  const c = newCanvas(img.naturalWidth || img.width, img.naturalHeight || img.height);
+  c.getContext("2d").drawImage(img, 0, 0);
+  return c;
+}
+
+const toBlob = (c, type, q) => new Promise((r) => c.toBlob(r, type, q));
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+function download(url, name) {
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+function downloadBlob(blob, name) {
+  const url = URL.createObjectURL(blob);
+  download(url, name);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+// JPEG has no transparency, so put a white background behind it instead of black.
+function flatten(c, color = "#ffffff") {
+  const o = newCanvas(c.width, c.height);
+  const x = o.getContext("2d");
+  x.fillStyle = color;
+  x.fillRect(0, 0, o.width, o.height);
+  x.drawImage(c, 0, 0);
+  return o;
+}
+
+const exportBlob = (c, type, q) => toBlob(type === "image/jpeg" ? flatten(c) : c, type, q);
+
+// Draw `src` into a w×h canvas. fit: "stretch" | "cover" (crop to fill) | "contain" (fit inside).
+function renderSized(src, w, h, fit = "stretch", pad = null) {
+  const c = newCanvas(w, h);
+  const x = c.getContext("2d");
+  x.imageSmoothingQuality = "high";
+  if (pad) {
+    x.fillStyle = pad;
+    x.fillRect(0, 0, w, h);
+  }
+  if (fit === "stretch") {
+    x.drawImage(src, 0, 0, w, h);
+  } else {
+    const s = fit === "cover" ? Math.max(w / src.width, h / src.height) : Math.min(w / src.width, h / src.height);
+    const dw = src.width * s, dh = src.height * s;
+    x.drawImage(src, (w - dw) / 2, (h - dh) / 2, dw, dh);
+  }
+  return c;
+}
+
+function setupDrop(zone, input, onFiles) {
+  zone.addEventListener("click", () => input.click());
+  zone.addEventListener("dragover", (e) => { e.preventDefault(); zone.classList.add("over"); });
+  zone.addEventListener("dragleave", () => zone.classList.remove("over"));
+  zone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    zone.classList.remove("over");
+    onFiles([...e.dataTransfer.files]);
+  });
+  input.addEventListener("change", () => { onFiles([...input.files]); input.value = ""; });
+}
+
+// ================= State =================
+let original = null;   // { name, size, url, canvas } — the uploaded file
+let cur = null;        // canvas holding the current (edited) image
+const history = [];
+let edited = false;
+let baseName = "image";
+let activeTab = "edit";
+
+setupDrop($("drop"), $("fileInput"), (files) => loadFile(files[0]));
+document.addEventListener("paste", (e) => {
+  const item = [...e.clipboardData.items].find((i) => i.type.startsWith("image/"));
+  if (item) loadFile(item.getAsFile());
+});
+
+async function loadFile(file) {
+  if (!file || !file.type.startsWith("image/")) { toast("Please choose an image file"); return; }
+  const url = URL.createObjectURL(file);
+  const img = await loadImage(url);
+  original = { name: file.name || "pasted-image.png", size: file.size, url, canvas: canvasFrom(img) };
+  baseName = original.name.replace(/\.[^.]+$/, "");
+  history.length = 0;
+  edited = false;
+  cur = canvasFrom(original.canvas);
+  $("tools").classList.remove("hidden");
+  stopCrop();
+  refresh();
+}
+
+function commit(canvas) {
+  history.push(cur);
+  if (history.length > 25) history.shift();
+  cur = canvas;
+  edited = true;
+  refresh();
+}
+
+$("undoBtn").addEventListener("click", undo);
+function undo() {
+  if (!history.length) return;
+  cur = history.pop();
+  edited = history.length > 0;
+  refresh();
+}
+
+$("resetBtn").addEventListener("click", () => {
+  if (!edited) return;
+  history.push(cur);
+  cur = canvasFrom(original.canvas);
+  edited = false;
+  refresh();
+});
+
+document.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && cur && document.activeElement.tagName !== "INPUT") {
+    e.preventDefault();
+    undo();
+  }
+});
+
+$("downloadCur").addEventListener("click", async () => {
+  downloadBlob(await toBlob(cur, "image/png"), `${baseName}-edited.png`);
+});
+
+// Called whenever `cur` changes.
+function refresh() {
+  const v = $("view");
+  v.width = cur.width;
+  v.height = cur.height;
+  v.getContext("2d").drawImage(cur, 0, 0);
+  previewAdjustments();
+  $("info").innerHTML = `<b>${original.name}</b> · ${cur.width} × ${cur.height}px · file ${formatBytes(original.size)}` +
+    (edited ? ' · <span class="saving">edited</span>' : "");
+  $("undoBtn").disabled = !history.length;
+  $("resetBtn").disabled = !edited;
+  $("sizeTable").classList.add("hidden");
+  $("downloadAll").classList.add("hidden");
+  scheduleCompress();
+  setupBackground();
+  paletteStale = true;
+  if (activeTab === "colors") buildPalette();
+}
+
+// ================= Tabs =================
+const HINTS = {
+  bg: "👆 Click the image to choose which colour is the background.",
+  colors: "👆 Click the image to pick a colour.",
+};
+document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => setTab(b.dataset.tab)));
+
+function setTab(tab) {
+  if (tab !== activeTab) stopCrop();
+  activeTab = tab;
+  document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+  document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === "panel-" + tab));
+  if (tab === "colors" && paletteStale) buildPalette();
+  updateHint();
+}
+
+function updateHint() {
+  $("stageHint").textContent = cropping ? "👆 Drag on the image to choose the area to keep." : HINTS[activeTab] || "";
+  $("view").classList.toggle("pick", cropping || activeTab === "bg" || activeTab === "colors");
+}
+
+// Image coordinates under the pointer.
+function imgPoint(e) {
+  const r = $("view").getBoundingClientRect();
+  return {
+    x: clamp(((e.clientX - r.left) / r.width) * cur.width, 0, cur.width),
+    y: clamp(((e.clientY - r.top) / r.height) * cur.height, 0, cur.height),
+  };
+}
+
+function pixelAt(p) {
+  const d = cur.getContext("2d").getImageData(Math.min(cur.width - 1, p.x | 0), Math.min(cur.height - 1, p.y | 0), 1, 1).data;
+  return [d[0], d[1], d[2]];
+}
+
+// ================= Edit: rotate / flip =================
+$("rotL").addEventListener("click", () => rotate(-90));
+$("rotR").addEventListener("click", () => rotate(90));
+$("flipH").addEventListener("click", () => flip(true));
+$("flipV").addEventListener("click", () => flip(false));
+
+function rotate(deg) {
+  const c = newCanvas(cur.height, cur.width);
+  const x = c.getContext("2d");
+  x.translate(c.width / 2, c.height / 2);
+  x.rotate((deg * Math.PI) / 180);
+  x.drawImage(cur, -cur.width / 2, -cur.height / 2);
+  commit(c);
+}
+
+function flip(horizontal) {
+  const c = newCanvas(cur.width, cur.height);
+  const x = c.getContext("2d");
+  x.translate(horizontal ? c.width : 0, horizontal ? 0 : c.height);
+  x.scale(horizontal ? -1 : 1, horizontal ? 1 : -1);
+  x.drawImage(cur, 0, 0);
+  commit(c);
+}
+
+// ================= Edit: crop =================
+let cropping = false;
+let crop = null;
+let dragStart = null;
+
+$("cropStart").addEventListener("click", startCrop);
+$("cropCancel").addEventListener("click", stopCrop);
+$("cropRatio").addEventListener("change", () => { if (cropping) defaultCrop(); });
+
+// The Passport tab locks the crop to the photo's shape.
+const cropRatio = () => (activeTab === "passport" ? passportRatio() : +$("cropRatio").value);
+$("cropApply").addEventListener("click", () => {
+  if (!crop || crop.w < 4 || crop.h < 4) { toast("Drag on the image to select an area first"); return; }
+  const w = Math.round(crop.w), h = Math.round(crop.h);
+  const c = newCanvas(w, h);
+  c.getContext("2d").drawImage(cur, Math.round(crop.x), Math.round(crop.y), w, h, 0, 0, w, h);
+  stopCrop();
+  commit(c);
+});
+
+function startCrop() {
+  cropping = true;
+  defaultCrop();
+  $("cropBox").classList.remove("hidden");
+  $("cropBox").classList.toggle("passport", activeTab === "passport");
+  $("cropStart").classList.add("hidden");
+  $("cropApply").classList.remove("hidden");
+  $("cropCancel").classList.remove("hidden");
+  updateHint();
+}
+
+function stopCrop() {
+  cropping = false;
+  dragStart = null;
+  $("cropBox").classList.add("hidden");
+  $("cropStart").classList.remove("hidden");
+  $("cropApply").classList.add("hidden");
+  $("cropCancel").classList.add("hidden");
+  updateHint();
+}
+
+// A centred box covering 80% of the image, in the chosen ratio.
+function defaultCrop() {
+  const r = cropRatio();
+  let w = cur.width * 0.8, h = cur.height * 0.8;
+  if (r) { if (w / h > r) w = h * r; else h = w / r; }
+  crop = { x: (cur.width - w) / 2, y: (cur.height - h) / 2, w, h };
+  drawCropBox();
+}
+
+function drawCropBox() {
+  Object.assign($("cropBox").style, {
+    left: (crop.x / cur.width) * 100 + "%",
+    top: (crop.y / cur.height) * 100 + "%",
+    width: (crop.w / cur.width) * 100 + "%",
+    height: (crop.h / cur.height) * 100 + "%",
+  });
+}
+
+$("view").addEventListener("pointerdown", (e) => {
+  if (!cur) return;
+  const p = imgPoint(e);
+  if (cropping) {
+    dragStart = p;
+    $("view").setPointerCapture(e.pointerId);
+  } else if (activeTab === "bg") {
+    keyColor = pixelAt(p);
+    showKey();
+    updateBgPreview();
+  } else if (activeTab === "colors") {
+    showPicked(pixelAt(p));
+  }
+});
+
+$("view").addEventListener("pointermove", (e) => {
+  if (!cropping || !dragStart) return;
+  const p = imgPoint(e);
+  const r = cropRatio();
+  const sx = Math.sign(p.x - dragStart.x) || 1;
+  const sy = Math.sign(p.y - dragStart.y) || 1;
+  let w = Math.abs(p.x - dragStart.x);
+  let h = Math.abs(p.y - dragStart.y);
+  if (r) {
+    const maxW = sx > 0 ? cur.width - dragStart.x : dragStart.x;
+    const maxH = sy > 0 ? cur.height - dragStart.y : dragStart.y;
+    w = Math.min(Math.max(w, h * r), maxW);
+    h = w / r;
+    if (h > maxH) { h = maxH; w = h * r; }
+  }
+  crop = { x: sx > 0 ? dragStart.x : dragStart.x - w, y: sy > 0 ? dragStart.y : dragStart.y - h, w, h };
+  drawCropBox();
+});
+
+$("view").addEventListener("pointerup", () => { dragStart = null; });
+
+// ================= Edit: adjustments =================
+const ADJ = [
+  // [css filter, label, min, max, default, unit]
+  ["brightness", "Brightness", 0, 200, 100, "%"],
+  ["contrast", "Contrast", 0, 200, 100, "%"],
+  ["saturate", "Saturation", 0, 300, 100, "%"],
+  ["hue-rotate", "Hue", -180, 180, 0, "deg"],
+  ["grayscale", "Grayscale", 0, 100, 0, "%"],
+  ["sepia", "Sepia", 0, 100, 0, "%"],
+  ["invert", "Invert", 0, 100, 0, "%"],
+  ["blur", "Blur", 0, 20, 0, "px"],
+];
+const FILTER_PRESETS = {
+  "Original": {},
+  "Vivid": { saturate: 150, contrast: 115 },
+  "Bright": { brightness: 120, contrast: 105 },
+  "B&W": { grayscale: 100, contrast: 115 },
+  "Vintage": { sepia: 45, contrast: 110, saturate: 80, brightness: 105 },
+  "Warm": { sepia: 25, saturate: 125 },
+  "Fade": { contrast: 85, brightness: 110, saturate: 75 },
+  "Dramatic": { contrast: 140, brightness: 90, saturate: 110 },
+};
+
+for (const [key, label, min, max, def] of ADJ) {
+  const row = document.createElement("div");
+  row.className = "slider-row";
+  row.innerHTML = `<span>${label}</span><input type="range" min="${min}" max="${max}" value="${def}" data-adj="${key}"><span>${def}</span>`;
+  row.querySelector("input").addEventListener("input", (e) => {
+    row.lastChild.textContent = e.target.value;
+    previewAdjustments();
+  });
+  $("adjSliders").appendChild(row);
+}
+
+for (const name of Object.keys(FILTER_PRESETS)) {
+  const b = document.createElement("button");
+  b.className = "secondary";
+  b.textContent = name;
+  b.addEventListener("click", () => setAdjustments(FILTER_PRESETS[name]));
+  $("filterPresets").appendChild(b);
+}
+
+function setAdjustments(values) {
+  for (const [key, , , , def] of ADJ) {
+    const input = document.querySelector(`[data-adj="${key}"]`);
+    input.value = values[key] ?? def;
+    input.nextElementSibling.textContent = input.value;
+  }
+  previewAdjustments();
+}
+
+// `blurScale` shrinks the blur for the on-screen preview, which is smaller than the real image.
+function filterString(blurScale = 1) {
+  return ADJ.map(([key, , , , def, unit]) => {
+    let v = +document.querySelector(`[data-adj="${key}"]`).value;
+    if (v === def) return "";
+    if (key === "blur") v *= blurScale;
+    return `${key}(${v}${unit})`;
+  }).join(" ").trim();
+}
+
+function previewAdjustments() {
+  const v = $("view");
+  v.style.filter = cur ? filterString(v.clientWidth / cur.width || 1) : "";
+}
+
+$("adjReset").addEventListener("click", () => setAdjustments({}));
+$("adjApply").addEventListener("click", () => {
+  const f = filterString();
+  if (!f) { toast("Move a slider or pick a preset first"); return; }
+  const c = newCanvas(cur.width, cur.height);
+  const x = c.getContext("2d");
+  x.filter = f;
+  x.drawImage(cur, 0, 0);
+  setAdjustments({});
+  commit(c);
+});
+
+// ================= Edit: watermark =================
+$("wmApply").addEventListener("click", () => {
+  const text = $("wmText").value.trim();
+  if (!text) { toast("Type the watermark text first"); return; }
+  const c = canvasFrom(cur);
+  const x = c.getContext("2d");
+  const size = Math.max(10, (c.width * $("wmSize").value) / 100);
+  x.font = `bold ${size}px "Segoe UI", sans-serif`;
+  x.fillStyle = $("wmColor").value;
+  x.globalAlpha = $("wmOpacity").value / 100;
+  x.shadowColor = "rgba(0,0,0,.35)";
+  x.shadowBlur = size * 0.12;
+  const pos = $("wmPos").value;
+
+  if (pos === "tile") {
+    const tw = x.measureText(text).width;
+    const stepX = tw + size * 2, stepY = size * 3;
+    const R = Math.hypot(c.width, c.height);
+    x.translate(c.width / 2, c.height / 2);
+    x.rotate(-Math.PI / 6);
+    x.textAlign = "center";
+    x.textBaseline = "middle";
+    for (let yy = -R; yy < R; yy += stepY) {
+      const shift = Math.round(yy / stepY) % 2 ? stepX / 2 : 0;
+      for (let xx = -R; xx < R; xx += stepX) x.fillText(text, xx + shift, yy);
+    }
+  } else {
+    const [v, h] = pos;
+    const m = size * 0.7;
+    x.textAlign = h === "l" ? "left" : h === "r" ? "right" : "center";
+    x.textBaseline = v === "t" ? "top" : v === "b" ? "bottom" : "middle";
+    x.fillText(text, h === "l" ? m : h === "r" ? c.width - m : c.width / 2, v === "t" ? m : v === "b" ? c.height - m : c.height / 2);
+  }
+  commit(c);
+});
+
+// ================= Compress =================
+let compressTimer, compressToken = 0, compressedUrl = null;
+let baseline = { canvas: null };
+
+$("cQuality").addEventListener("input", () => { $("cQualityVal").textContent = $("cQuality").value; scheduleCompress(); });
+$("cFormat").addEventListener("change", scheduleCompress);
+$("targetOn").addEventListener("change", () => { $("cQuality").disabled = $("targetOn").checked; scheduleCompress(); });
+$("targetKB").addEventListener("input", scheduleCompress);
+$("cmpPos").addEventListener("input", positionCompare);
+
+function scheduleCompress() {
+  clearTimeout(compressTimer);
+  compressTimer = setTimeout(updateCompression, 150);
+}
+
+// What the compressed result is compared against: the uploaded file, or the edited image as PNG.
+async function getBaseline() {
+  if (baseline.canvas === cur) return baseline;
+  if (baseline.url && baseline.url !== original.url) URL.revokeObjectURL(baseline.url);
+  if (!edited) {
+    baseline = { canvas: cur, url: original.url, size: original.size, label: "Original file" };
+  } else {
+    const b = await toBlob(cur, "image/png");
+    baseline = { canvas: cur, url: URL.createObjectURL(b), size: b.size, label: "Edited image (PNG)" };
+  }
+  return baseline;
+}
+
+async function updateCompression() {
+  if (!cur) return;
+  const token = ++compressToken;
+  const type = $("cFormat").value;
+  let q = $("cQuality").value / 100;
+  let note = "";
+  let blob;
+  const base = await getBaseline();
+
+  if ($("targetOn").checked && type !== "image/png") {
+    // Binary-search the highest quality that still fits under the target size.
+    const target = (+$("targetKB").value || 100) * 1024;
+    const src = type === "image/jpeg" ? flatten(cur) : cur;
+    let lo = 0.01, hi = 1, best = null;
+    for (let i = 0; i < 8; i++) {
+      const mid = (lo + hi) / 2;
+      const b = await toBlob(src, type, mid);
+      if (token !== compressToken) return;
+      if (b.size <= target) { best = b; q = mid; lo = mid; } else hi = mid;
+    }
+    if (best) {
+      blob = best;
+      note = `Quality picked automatically: ${Math.round(q * 100)}%`;
+    } else {
+      blob = await toBlob(src, type, 0.01);
+      note = "Can't reach that size even at the lowest quality — make the image smaller in the Resize tab first.";
+    }
+  } else {
+    if ($("targetOn").checked) note = "Target size works with JPEG or WebP only.";
+    blob = await exportBlob(cur, type, q);
+  }
+  if (token !== compressToken) return;
+
+  if (compressedUrl) URL.revokeObjectURL(compressedUrl);
+  compressedUrl = URL.createObjectURL(blob);
+  $("targetNote").textContent = note;
+  $("cmpBase").src = base.url;
+  $("cmpTop").src = compressedUrl;
+  positionCompare();
+  $("baseLabel").textContent = base.label;
+  $("baseSize").textContent = formatBytes(base.size);
+  $("compSize").textContent = formatBytes(blob.size);
+  const pct = Math.round((1 - blob.size / base.size) * 100);
+  $("compSaving").textContent = pct >= 0 ? `(${pct}% smaller)` : `(${-pct}% larger)`;
+  $("compSaving").style.color = pct >= 0 ? "var(--ok)" : "var(--bad)";
+  $("compDownload").href = compressedUrl;
+  $("compDownload").download = `${baseName}-compressed.${EXT[type]}`;
+}
+
+function positionCompare() {
+  const v = $("cmpPos").value;
+  $("cmpTop").style.clipPath = `inset(0 0 0 ${v}%)`;
+  $("cmpDivider").style.left = v + "%";
+}
+
+// ================= Resize =================
+const WIDTHS = [1920, 1280, 800, 400, 150];
+const PRESETS = [
+  ["Instagram post", 1080, 1080],
+  ["Instagram portrait", 1080, 1350],
+  ["Instagram / WhatsApp story", 1080, 1920],
+  ["YouTube thumbnail", 1280, 720],
+  ["Facebook post", 1200, 630],
+  ["Facebook cover", 820, 312],
+  ["LinkedIn banner", 1584, 396],
+  ["X / Twitter header", 1500, 500],
+  ["Pinterest pin", 1000, 1500],
+  ["Profile picture", 500, 500],
+  ["App icon", 512, 512],
+  ["Favicon", 32, 32],
+];
+
+function addCheck(container, value, label, checked) {
+  const l = document.createElement("label");
+  l.innerHTML = `<input type="checkbox" value="${value}" ${checked ? "checked" : ""}> ${label}`;
+  container.appendChild(l);
+}
+WIDTHS.forEach((w) => addCheck($("widthBoxes"), w, w + "px", w !== 1920));
+PRESETS.forEach(([name, w, h], i) => addCheck($("presetBoxes"), i, `${name} <small>${w}×${h}</small>`, false));
+
+$("addSize").addEventListener("click", () => {
+  const w = parseInt($("customW").value, 10);
+  if (!w || w < 16 || w > 8000) { toast("Enter a width between 16 and 8000"); return; }
+  addCheck($("widthBoxes"), w, w + "px", true);
+  $("customW").value = "";
+});
+
+const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const sizeFiles = [];
+
+$("makeSizes").addEventListener("click", async () => {
+  const jobs = [];
+  for (const c of $("widthBoxes").querySelectorAll("input:checked")) {
+    const w = +c.value;
+    jobs.push({ label: `${w}px wide`, w, h: Math.max(1, Math.round((cur.height * w) / cur.width)), fit: "stretch" });
+  }
+  for (const c of $("presetBoxes").querySelectorAll("input:checked")) {
+    const [name, w, h] = PRESETS[+c.value];
+    jobs.push({ label: name, w, h, fit: $("fitMode").value });
+  }
+  if (!jobs.length) { toast("Tick at least one size"); return; }
+
+  const type = $("cFormat").value;
+  const q = $("cQuality").value / 100;
+  sizeFiles.length = 0;
+  const tbody = $("sizeTable").querySelector("tbody");
+  tbody.innerHTML = "";
+
+  for (const job of jobs) {
+    const pad = job.fit === "contain" ? $("padColor").value : null;
+    const canvas = renderSized(cur, job.w, job.h, job.fit, pad);
+    const blob = await exportBlob(canvas, type, q);
+    const url = URL.createObjectURL(blob);
+    const name = `${baseName}-${slug(job.label)}-${job.w}x${job.h}.${EXT[type]}`;
+    sizeFiles.push({ url, name });
+    const tr = document.createElement("tr");
+    const bigger = job.w > cur.width ? ' <span style="color:var(--bad)">(upscaled)</span>' : "";
+    tr.innerHTML = `<td><img src="${url}"></td><td>${job.label}<br><small>${job.w} × ${job.h}${bigger}</small></td>
+      <td>${formatBytes(blob.size)}</td><td><a class="btn" href="${url}" download="${name}">⬇</a></td>`;
+    tbody.appendChild(tr);
+  }
+  $("sizeTable").classList.remove("hidden");
+  $("downloadAll").classList.remove("hidden");
+});
+
+$("downloadAll").addEventListener("click", async () => {
+  for (const f of sizeFiles) {
+    download(f.url, f.name);
+    await new Promise((r) => setTimeout(r, 300)); // browsers block downloads fired too quickly
+  }
+});
+
+// ================= Background removal =================
+const MAX_BG = 1200; // preview on a smaller copy so the sliders stay fast
+let bgPixels = null;
+let keyColor = [255, 255, 255];
+
+function setupBackground() {
+  const s = Math.min(1, MAX_BG / Math.max(cur.width, cur.height));
+  const small = renderSized(cur, Math.max(1, Math.round(cur.width * s)), Math.max(1, Math.round(cur.height * s)));
+  bgPixels = small.getContext("2d").getImageData(0, 0, small.width, small.height);
+  keyColor = guessBackgroundColor(bgPixels);
+  showKey();
+  updateBgPreview();
+}
+
+// Pick the corner colour that most other corners agree with — usually the background.
+function guessBackgroundColor({ data, width, height }) {
+  const corners = [[0, 0], [width - 1, 0], [0, height - 1], [width - 1, height - 1]].map(([x, y]) => {
+    const i = (y * width + x) * 4;
+    return [data[i], data[i + 1], data[i + 2]];
+  });
+  const close = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) < 40;
+  let best = corners[0], bestVotes = -1;
+  for (const c of corners) {
+    const votes = corners.filter((o) => close(c, o)).length;
+    if (votes > bestVotes) { best = c; bestVotes = votes; }
+  }
+  return best;
+}
+
+function showKey() {
+  $("keySwatch").style.background = `rgb(${keyColor.join(",")})`;
+}
+
+let bgTimer;
+for (const id of ["tol", "feather"]) {
+  $(id).addEventListener("input", () => {
+    $(id + "Val").textContent = $(id).value;
+    clearTimeout(bgTimer);
+    bgTimer = setTimeout(updateBgPreview, 50);
+  });
+}
+$("contiguous").addEventListener("change", updateBgPreview);
+$("newBg").addEventListener("input", updateBgPreview);
+document.querySelectorAll("input[name=bgMode]").forEach((r) => r.addEventListener("change", updateBgPreview));
+
+function updateBgPreview() {
+  if (!bgPixels) return;
+  const out = removeBackground(bgPixels);
+  const c = $("bgCanvas");
+  c.width = out.width;
+  c.height = out.height;
+  c.getContext("2d").putImageData(out, 0, 0);
+}
+
+// `fillColor` (optional) replaces the background with that colour instead of using the Background tab's choice.
+function removeBackground({ width, height, data }, fillColor) {
+  const tol = +$("tol").value;
+  const feather = +$("feather").value;
+  const limit = tol + feather;
+  const [kr, kg, kb] = keyColor;
+
+  // Distance of every pixel's colour from the background colour.
+  const n = width * height;
+  const dist = new Float32Array(n);
+  for (let p = 0, i = 0; p < n; p++, i += 4) {
+    const dr = data[i] - kr, dg = data[i + 1] - kg, db = data[i + 2] - kb;
+    dist[p] = Math.sqrt(dr * dr + dg * dg + db * db);
+  }
+
+  // alpha[p]: 0 = background (remove), 1 = keep
+  const alpha = new Float32Array(n).fill(1);
+  const toAlpha = (d) => (d <= tol ? 0 : feather ? Math.min(1, (d - tol) / feather) : 1);
+
+  if ($("contiguous").checked) {
+    // Flood fill from the image borders through background-coloured pixels.
+    const seen = new Uint8Array(n);
+    const stack = [];
+    const push = (p) => { if (!seen[p] && dist[p] < limit) { seen[p] = 1; stack.push(p); } };
+    for (let x = 0; x < width; x++) { push(x); push((height - 1) * width + x); }
+    for (let y = 0; y < height; y++) { push(y * width); push(y * width + width - 1); }
+    while (stack.length) {
+      const p = stack.pop();
+      alpha[p] = toAlpha(dist[p]);
+      if (dist[p] > tol) continue; // edge pixel: soften it but don't spread past it
+      const x = p % width;
+      if (x > 0) push(p - 1);
+      if (x < width - 1) push(p + 1);
+      if (p >= width) push(p - width);
+      if (p < n - width) push(p + width);
+    }
+  } else {
+    for (let p = 0; p < n; p++) alpha[p] = toAlpha(dist[p]);
+  }
+
+  const out = new ImageData(width, height);
+  const o = out.data;
+  const useColor = !!fillColor || document.querySelector("input[name=bgMode]:checked").value === "color";
+  const hex = fillColor || $("newBg").value;
+  const nr = parseInt(hex.slice(1, 3), 16), ng = parseInt(hex.slice(3, 5), 16), nb = parseInt(hex.slice(5, 7), 16);
+
+  for (let p = 0, i = 0; p < n; p++, i += 4) {
+    const a = alpha[p];
+    if (useColor) {
+      o[i] = data[i] * a + nr * (1 - a);
+      o[i + 1] = data[i + 1] * a + ng * (1 - a);
+      o[i + 2] = data[i + 2] * a + nb * (1 - a);
+      o[i + 3] = 255;
+    } else {
+      o[i] = data[i]; o[i + 1] = data[i + 1]; o[i + 2] = data[i + 2];
+      o[i + 3] = data[i + 3] * a;
+    }
+  }
+  return out;
+}
+
+// Run the removal again on the full-size image (the preview is a smaller copy).
+function fullSizeWithoutBackground(fillColor) {
+  const out = removeBackground(cur.getContext("2d").getImageData(0, 0, cur.width, cur.height), fillColor);
+  const c = newCanvas(cur.width, cur.height);
+  c.getContext("2d").putImageData(out, 0, 0);
+  return c;
+}
+
+$("bgApply").addEventListener("click", () => {
+  commit(fullSizeWithoutBackground());
+  if ($("cFormat").value === "image/jpeg") $("cFormat").value = "image/png";
+  toast("Background removed — save as PNG or WebP to keep transparency");
+});
+$("bgDownload").addEventListener("click", async () => {
+  downloadBlob(await toBlob(fullSizeWithoutBackground(), "image/png"), `${baseName}-no-bg.png`);
+});
+
+// ================= Colors =================
+let paletteStale = true;
+const hex = (rgb) => "#" + rgb.map((v) => v.toString(16).padStart(2, "0")).join("").toUpperCase();
+
+function copyText(text) {
+  navigator.clipboard?.writeText(text).then(() => toast("Copied " + text), () => toast(text));
+}
+
+// Group pixels into colour buckets and keep the most common, clearly different ones.
+function buildPalette() {
+  paletteStale = false;
+  const s = Math.min(1, 120 / Math.max(cur.width, cur.height));
+  const small = renderSized(cur, Math.max(1, Math.round(cur.width * s)), Math.max(1, Math.round(cur.height * s)));
+  const data = small.getContext("2d").getImageData(0, 0, small.width, small.height).data;
+  const buckets = new Map();
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] < 128) continue;
+    const key = ((data[i] >> 4) << 8) | ((data[i + 1] >> 4) << 4) | (data[i + 2] >> 4);
+    const b = buckets.get(key) || { n: 0, r: 0, g: 0, b: 0 };
+    b.n++; b.r += data[i]; b.g += data[i + 1]; b.b += data[i + 2];
+    buckets.set(key, b);
+  }
+  const colors = [...buckets.values()].sort((a, b) => b.n - a.n)
+    .map((b) => [Math.round(b.r / b.n), Math.round(b.g / b.n), Math.round(b.b / b.n)]);
+  const picked = [];
+  for (const c of colors) {
+    if (picked.every((p) => Math.hypot(p[0] - c[0], p[1] - c[1], p[2] - c[2]) > 48)) picked.push(c);
+    if (picked.length === 10) break;
+  }
+  $("palette").innerHTML = "";
+  for (const c of picked) {
+    const el = document.createElement("div");
+    el.className = "pal";
+    el.innerHTML = `<div style="background:${hex(c)}"></div><span>${hex(c)}</span>`;
+    el.addEventListener("click", () => copyText(hex(c)));
+    $("palette").appendChild(el);
+  }
+}
+
+function showPicked(rgb) {
+  const [r, g, b] = rgb;
+  $("picked").innerHTML = `<div class="big" style="background:${hex(rgb)}"></div>
+    <div>${hex(rgb)}<br>rgb(${r}, ${g}, ${b})<br><button class="secondary" style="margin-top:6px;padding:4px 10px">Copy</button></div>`;
+  $("picked").querySelector("button").addEventListener("click", () => copyText(hex(rgb)));
+}
+
+// ================= Passport photos & print sheet =================
+const PASSPORT_SIZES = [
+  ["35 × 45 mm — Pakistan, UK, EU / Schengen, India passport", 35, 45],
+  ["2 × 2 in (51 × 51 mm) — USA passport & visa, India visa", 51, 51],
+  ["50 × 70 mm — Canada passport", 50, 70],
+  ["33 × 48 mm — China visa", 33, 48],
+  ["35 × 50 mm — Malaysia passport", 35, 50],
+  ["20 × 25 mm — Stamp size", 20, 25],
+  ["Custom size…", 0, 0],
+];
+const PAPERS = [
+  ["4 × 6 in photo paper (102 × 152 mm)", 102, 152],
+  ["5 × 7 in photo paper (127 × 178 mm)", 127, 178],
+  ["A4 (210 × 297 mm)", 210, 297],
+  ["A5 (148 × 210 mm)", 148, 210],
+  ["Letter (216 × 279 mm)", 216, 279],
+  ["Custom size…", 0, 0],
+];
+const DPI = 300;
+const mmToPx = (mm) => Math.round((mm / 25.4) * DPI);
+let ppPhoto = null; // the finished single passport photo
+let sheet = null;   // { canvas, w, h } in mm
+
+PASSPORT_SIZES.forEach(([label], i) => $("ppSize").add(new Option(label, i)));
+PAPERS.forEach(([label], i) => $("paper").add(new Option(label, i)));
+
+function ppDims() {
+  const [, w, h] = PASSPORT_SIZES[+$("ppSize").value];
+  return w ? [w, h] : [+$("ppW").value || 35, +$("ppH").value || 45];
+}
+function passportRatio() {
+  const [w, h] = ppDims();
+  return w / h;
+}
+function paperDims() {
+  const [, w, h] = PAPERS[+$("paper").value];
+  return w ? [w, h] : [+$("paperW").value || 102, +$("paperH").value || 152];
+}
+
+$("ppSize").addEventListener("change", () => {
+  $("ppCustom").classList.toggle("hidden", PASSPORT_SIZES[+$("ppSize").value][1] !== 0);
+  if (cropping) defaultCrop();
+});
+for (const id of ["ppW", "ppH"]) $(id).addEventListener("input", () => { if (cropping) defaultCrop(); });
+$("paper").addEventListener("change", () => $("paperCustom").classList.toggle("hidden", PAPERS[+$("paper").value][1] !== 0));
+$("ppCrop").addEventListener("click", () => (cropping ? stopCrop() : startCrop()));
+
+// Windows and photo labs read the print size from the JPEG header, so write 300 DPI into it.
+async function jpegWithDpi(canvas) {
+  const buf = new Uint8Array(await (await toBlob(canvas, "image/jpeg", 0.95)).arrayBuffer());
+  if (buf[2] === 0xff && buf[3] === 0xe0 && String.fromCharCode(...buf.slice(6, 10)) === "JFIF") {
+    buf[13] = 1; // units: dots per inch
+    buf[14] = buf[16] = DPI >> 8;
+    buf[15] = buf[17] = DPI & 255;
+  }
+  return new Blob([buf], { type: "image/jpeg" });
+}
+
+function showCanvas(target, source) {
+  target.width = source.width;
+  target.height = source.height;
+  target.getContext("2d").drawImage(source, 0, 0);
+}
+
+$("ppMake").addEventListener("click", () => {
+  const [wmm, hmm] = ppDims();
+  const r = wmm / hmm;
+  // The chosen area, or the biggest centred area of the right shape.
+  let area = cropping && crop && crop.w > 4 ? crop : null;
+  if (!area) {
+    let w = cur.width, h = cur.height;
+    if (w / h > r) w = h * r; else h = w / r;
+    area = { x: (cur.width - w) / 2, y: (cur.height - h) / 2, w, h };
+  }
+  const choice = document.querySelector("input[name=ppBg]:checked").value;
+  const bg = choice === "keep" ? null : choice === "custom" ? $("ppBgColor").value : choice;
+  const src = bg ? fullSizeWithoutBackground(bg) : cur;
+
+  const W = mmToPx(wmm), H = mmToPx(hmm);
+  const c = newCanvas(W, H);
+  const x = c.getContext("2d");
+  x.fillStyle = bg || "#ffffff";
+  x.fillRect(0, 0, W, H);
+  x.imageSmoothingQuality = "high";
+  x.drawImage(src, area.x, area.y, area.w, area.h, 0, 0, W, H);
+  ppPhoto = c;
+  stopCrop();
+
+  showCanvas($("ppCanvas"), c);
+  $("ppInfo").innerHTML = `${wmm} × ${hmm} mm · ${W} × ${H} px at ${DPI} DPI` +
+    (area.w < W * 0.6 ? ' · <span style="color:var(--bad)">⚠ the photo is small, the print may look soft</span>' : "");
+  $("ppResult").classList.remove("hidden");
+  $("sheetResult").classList.add("hidden");
+  $("ppResult").scrollIntoView({ behavior: "smooth", block: "nearest" });
+});
+
+$("ppDownload").addEventListener("click", async () => {
+  const [w, h] = ppDims();
+  downloadBlob(await jpegWithDpi(ppPhoto), `${baseName}-passport-${w}x${h}mm.jpg`);
+});
+
+$("sheetMake").addEventListener("click", () => {
+  const [pw, ph] = paperDims();
+  const [w, h] = ppDims();
+  const gap = Math.max(0, +$("ppGap").value || 0), margin = Math.max(0, +$("ppMargin").value || 0);
+  const fit = (PW, PH) => ({
+    cols: Math.max(0, Math.floor((PW - 2 * margin + gap) / (w + gap))),
+    rows: Math.max(0, Math.floor((PH - 2 * margin + gap) / (h + gap))),
+  });
+  // Use whichever paper orientation fits more photos.
+  let [PW, PH] = [pw, ph];
+  let f = fit(PW, PH);
+  const turned = fit(ph, pw);
+  if (turned.cols * turned.rows > f.cols * f.rows) { [PW, PH] = [ph, pw]; f = turned; }
+  const max = f.cols * f.rows;
+  if (!max) { toast("The photo doesn't fit on this paper — make the margin smaller or choose bigger paper"); return; }
+  const n = Math.min(+$("ppCount").value || max, max);
+
+  const c = newCanvas(mmToPx(PW), mmToPx(PH));
+  const x = c.getContext("2d");
+  x.fillStyle = "#ffffff";
+  x.fillRect(0, 0, c.width, c.height);
+  const ox = (PW - (f.cols * w + (f.cols - 1) * gap)) / 2; // centre the grid across the page
+  for (let i = 0; i < n; i++) {
+    const px = ox + (i % f.cols) * (w + gap), py = margin + Math.floor(i / f.cols) * (h + gap);
+    x.drawImage(ppPhoto, mmToPx(px), mmToPx(py), mmToPx(w), mmToPx(h));
+    if ($("ppCutLines").checked) {
+      x.strokeStyle = "#b0b0b0";
+      x.lineWidth = 2;
+      x.strokeRect(mmToPx(px) - 1, mmToPx(py) - 1, mmToPx(w) + 2, mmToPx(h) + 2);
+    }
+  }
+  sheet = { canvas: c, w: PW, h: PH };
+  showCanvas($("sheetCanvas"), c);
+  $("sheetInfo").textContent = `${n} photo(s) on ${PW} × ${PH} mm paper · up to ${max} fit (${f.cols} × ${f.rows}) · ${c.width} × ${c.height} px at ${DPI} DPI`;
+  $("sheetResult").classList.remove("hidden");
+});
+
+$("sheetDownload").addEventListener("click", async () => {
+  downloadBlob(await jpegWithDpi(sheet.canvas), `${baseName}-passport-sheet-${sheet.w}x${sheet.h}mm.jpg`);
+});
+
+// Print at real size: the page is set to the paper size and the sheet image fills it exactly.
+$("sheetPrint").addEventListener("click", async () => {
+  const img = new Image();
+  img.src = sheet.canvas.toDataURL("image/jpeg", 0.95);
+  img.style.cssText = `width:${sheet.w}mm;height:${sheet.h}mm;display:block`;
+  await img.decode();
+  $("printArea").replaceChildren(img);
+  $("printStyle").textContent = `@page { size: ${sheet.w}mm ${sheet.h}mm; margin: 0; }`;
+  window.print();
+});
+
+// ================= Batch =================
+let batchFiles = [];
+const batchOut = [];
+setupDrop($("batchDrop"), $("batchInput"), (files) => {
+  batchFiles = files.filter((f) => f.type.startsWith("image/"));
+  $("batchRun").disabled = !batchFiles.length;
+  $("batchSummary").textContent = batchFiles.length ? `${batchFiles.length} image(s) ready — press "Compress all".` : "No images selected.";
+});
+$("bQuality").addEventListener("input", () => { $("bQualityVal").textContent = $("bQuality").value; });
+
+$("batchRun").addEventListener("click", async () => {
+  const type = $("bFormat").value;
+  const q = $("bQuality").value / 100;
+  const maxW = +$("bMaxW").value || 0;
+  const tbody = $("batchTable").querySelector("tbody");
+  tbody.innerHTML = "";
+  batchOut.length = 0;
+  $("batchTable").classList.remove("hidden");
+  $("batchRun").disabled = true;
+  let before = 0, after = 0;
+
+  for (const [i, file] of batchFiles.entries()) {
+    $("batchSummary").textContent = `Working… ${i + 1} / ${batchFiles.length}`;
+    const src = URL.createObjectURL(file);
+    const img = canvasFrom(await loadImage(src));
+    URL.revokeObjectURL(src);
+    let w = img.width, h = img.height;
+    if (maxW && w > maxW) { h = Math.round((h * maxW) / w); w = maxW; }
+    const blob = await exportBlob(renderSized(img, w, h), type, q);
+    const url = URL.createObjectURL(blob);
+    const name = file.name.replace(/\.[^.]+$/, "") + "-compressed." + EXT[type];
+    batchOut.push({ url, name });
+    before += file.size;
+    after += blob.size;
+    const pct = Math.round((1 - blob.size / file.size) * 100);
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td><img src="${url}"></td><td>${file.name}<br><small>${w} × ${h}</small></td>
+      <td>${formatBytes(file.size)}</td><td>${formatBytes(blob.size)}</td>
+      <td style="color:${pct >= 0 ? "var(--ok)" : "var(--bad)"}">${pct}%</td>
+      <td><a class="btn" href="${url}" download="${name}">⬇</a></td>`;
+    tbody.appendChild(tr);
+  }
+  $("batchSummary").innerHTML = `Done! <b>${formatBytes(before)}</b> → <b>${formatBytes(after)}</b>
+    <span class="saving">(${Math.round((1 - after / before) * 100)}% saved)</span>`;
+  $("batchRun").disabled = false;
+  $("batchDownload").classList.remove("hidden");
+});
+
+$("batchDownload").addEventListener("click", async () => {
+  for (const f of batchOut) {
+    download(f.url, f.name);
+    await new Promise((r) => setTimeout(r, 300));
+  }
+});
+</script>
+</body>
+</html>
